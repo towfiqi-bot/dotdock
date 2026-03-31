@@ -1194,12 +1194,17 @@ Output:
   }
 
   // --------- Data loading ----------
+  function withCb_(url) {
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}cb=${Date.now()}`;
+  }
+
   async function loadData(forceFresh) {
     if (!forceFresh) {
       const cached = cacheGet();
       if (cached) return cached;
     }
-    const url = DATA_URL + (DATA_URL.includes("?") ? "&" : "?") + "cb=" + Date.now();
+    const url = withCb_(DATA_URL);
     const res = await fetch(url, { cache: "no-store", mode: "cors", credentials: "omit" });
     if (!res.ok) throw new Error("Failed to load catalog (" + res.status + ")");
     const text = await res.text();
@@ -3317,6 +3322,28 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
         document.getElementById("resultsInfo").textContent = "Error loading data: " + e.message;
       }
     }
+
+    // Quick second pull shortly after first load to pick up very recent Drive index updates.
+    setTimeout(async () => {
+      try {
+        const fresh = prepareItems(await loadData(true));
+        const sig = (arr) => `${arr.length}|${Math.max(...arr.map(x => x.modified || 0))}`;
+        if (sig(fresh) === sig(state.allItems || [])) return;
+
+        state.allItems = fresh;
+        cacheSet(fresh);
+        buildFacetFilters();
+        refreshSearchSuggestData();
+        const { newCount } = computeNewMarkers_(fresh);
+        setLiveHeaderStatus({ updatedAt: catalogMaxTimestamp_(fresh), newCount });
+        applyFilters(true);
+        renderReadingList();
+        renderCompare();
+        showToast("Latest files loaded.");
+      } catch (e) {
+        // Silent fallback: keep current view if follow-up fetch fails.
+      }
+    }, 15000);
 
     sortSelect.value = state.sortMode;
 
