@@ -3265,8 +3265,9 @@ setInterval(async () => {
       if (id) toggleCompare(id);
     });
 
-    // Instant-load cached data
-    const cached = cacheGet();
+    // Instant-load cached data (except "Added Today", where fresh-first avoids stale/empty flashes)
+    const preferFreshFirst = state.tab === "today";
+    const cached = preferFreshFirst ? null : cacheGet();
     const cachedMeta = cacheGetMeta_();
     if (cached) {
       state.allItems = prepareItems(cached);
@@ -3293,6 +3294,9 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
     } else {
       // Keep header pill visible while first load runs
       setLiveHeaderStatus({ updatedAt: 0, newCount: 0 });
+      if (preferFreshFirst) {
+        document.getElementById("resultsInfo").textContent = "Loading latest reports…";
+      }
     }
 
     // Fetch fresh
