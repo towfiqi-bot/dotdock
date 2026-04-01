@@ -1194,12 +1194,17 @@ Output:
   }
 
   // --------- Data loading ----------
+  function withCb_(url) {
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}cb=${Date.now()}`;
+  }
+
   async function loadData(forceFresh) {
     if (!forceFresh) {
       const cached = cacheGet();
       if (cached) return cached;
     }
-    const url = DATA_URL + (DATA_URL.includes("?") ? "&" : "?") + "cb=" + Date.now();
+    const url = withCb_(DATA_URL);
     const res = await fetch(url, { cache: "no-store", mode: "cors", credentials: "omit" });
     if (!res.ok) throw new Error("Failed to load catalog (" + res.status + ")");
     const text = await res.text();
@@ -3260,9 +3265,15 @@ setInterval(async () => {
       if (id) toggleCompare(id);
     });
 
-    // Instant-load cached data
-    const cached = cacheGet();
+    // Instant-load cached data only when cache is very recent.
+    // This avoids showing stale cards (e.g., "27d ago") on first paint.
+    const preferFreshFirst = state.tab === "today";
     const cachedMeta = cacheGetMeta_();
+    const cacheAgeMs = (cachedMeta && typeof cachedMeta.time === "number")
+      ? (Date.now() - cachedMeta.time)
+      : Number.POSITIVE_INFINITY;
+    const allowCachedFirst = !preferFreshFirst && cacheAgeMs <= (60 * 1000);
+    const cached = allowCachedFirst ? cacheGet() : null;
     if (cached) {
       state.allItems = prepareItems(cached);
       buildFacetFilters();
@@ -3288,6 +3299,9 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
     } else {
       // Keep header pill visible while first load runs
       setLiveHeaderStatus({ updatedAt: 0, newCount: 0 });
+      if (preferFreshFirst) {
+        document.getElementById("resultsInfo").textContent = "Loading latest reports…";
+      }
     }
 
     // Fetch fresh
@@ -3317,6 +3331,28 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
         document.getElementById("resultsInfo").textContent = "Error loading data: " + e.message;
       }
     }
+
+    // Quick second pull shortly after first load to pick up very recent Drive index updates.
+    setTimeout(async () => {
+      try {
+        const fresh = prepareItems(await loadData(true));
+        const sig = (arr) => `${arr.length}|${Math.max(...arr.map(x => x.modified || 0))}`;
+        if (sig(fresh) === sig(state.allItems || [])) return;
+
+        state.allItems = fresh;
+        cacheSet(fresh);
+        buildFacetFilters();
+        refreshSearchSuggestData();
+        const { newCount } = computeNewMarkers_(fresh);
+        setLiveHeaderStatus({ updatedAt: catalogMaxTimestamp_(fresh), newCount });
+        applyFilters(true);
+        renderReadingList();
+        renderCompare();
+        showToast("Latest files loaded.");
+      } catch (e) {
+        // Silent fallback: keep current view if follow-up fetch fails.
+      }
+    }, 15000);
 
     sortSelect.value = state.sortMode;
 
