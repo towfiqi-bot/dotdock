@@ -526,7 +526,8 @@
 
   // Browser cache for instant load
   const CACHE_KEY = "pdf_catalog_cache_v2";
-  const CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+  const CACHE_TTL_MS = 48 * 60 * 60 * 1000;   // hard cutoff: don't use very old snapshots
+  const CACHE_PREFER_MS = 15 * 60 * 1000;      // prefer cached-first render within 15m on Home
   const LAST_SEEN_MAX_MOD_KEY = "dotdock_last_seen_max_modified_v1";
 
   // Local-only features
@@ -684,8 +685,7 @@
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (!parsed?.time || !parsed?.data) return null;
-      // stale cache is still returned instantly; fresh fetch runs on load
-      // if (Date.now() - parsed.time > CACHE_TTL_MS) return null;
+      if (Date.now() - parsed.time > CACHE_TTL_MS) return null;
       return parsed.data;
     } catch { return null; }
   }
@@ -3474,14 +3474,14 @@ setInterval(async () => {
       if (id) toggleCompare(id);
     });
 
-    // Instant-load cached data only when cache is very recent.
-    // This avoids showing stale cards (e.g., "27d ago") on first paint.
+    // Instant-load cached data on Home to improve first paint.
+    // For Added Today, keep fresh-first behavior to avoid "0 added today" stale flashes.
     const preferFreshFirst = state.tab === "today";
     const cachedMeta = cacheGetMeta_();
     const cacheAgeMs = (cachedMeta && typeof cachedMeta.time === "number")
       ? (Date.now() - cachedMeta.time)
       : Number.POSITIVE_INFINITY;
-    const allowCachedFirst = !preferFreshFirst && cacheAgeMs <= (60 * 1000);
+    const allowCachedFirst = !preferFreshFirst && cacheAgeMs <= CACHE_TTL_MS;
     const cached = allowCachedFirst ? cacheGet() : null;
     if (cached) {
       state.allItems = prepareItems(cached);
@@ -3504,7 +3504,10 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
       applyFilters();
       renderReadingList();
       renderCompare();
-      document.getElementById("resultsInfo").textContent = "Showing cached results… updating";
+      document.getElementById("resultsInfo").textContent =
+        cacheAgeMs <= CACHE_PREFER_MS
+          ? "Loaded from cache. Syncing latest…"
+          : "Showing cached snapshot while syncing latest…";
     } else {
       // Keep header pill visible while first load runs
       setLiveHeaderStatus({ updatedAt: 0, newCount: 0 });
