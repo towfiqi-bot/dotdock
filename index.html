@@ -2187,25 +2187,38 @@ function openPdfModalById(id) {
   // --------- Infinite scroll ----------
   function setupInfiniteScroll() {
     const sentinel = document.getElementById("infiniteSentinel");
-    if (!("IntersectionObserver" in window)) return;
-
-    let ticking = false;
-    const obs = new IntersectionObserver(entries => {
-      const e = entries[0];
-      if (!e.isIntersecting) return;
-      if (ticking) return;
-
+    function loadNextPage_() {
       const total = state.filteredItems.length;
       const maxShown = state.page * state.pageSize;
-      if (maxShown >= total) return;
-
-      ticking = true;
+      if (maxShown >= total) return false;
       state.page += 1;
       render();
-      setTimeout(() => { ticking = false; }, 200);
-    }, { root: null, rootMargin: "700px 0px", threshold: 0 });
+      return true;
+    }
 
-    obs.observe(sentinel);
+    let ticking = false;
+    if ("IntersectionObserver" in window && sentinel) {
+      const obs = new IntersectionObserver(entries => {
+        const e = entries[0];
+        if (!e.isIntersecting) return;
+        if (ticking) return;
+        ticking = true;
+        loadNextPage_();
+        setTimeout(() => { ticking = false; }, 120);
+      }, { root: null, rootMargin: "1200px 0px", threshold: 0 });
+      obs.observe(sentinel);
+    }
+
+    // Fallback: near-bottom scroll loader for browsers/layouts where observer
+    // callbacks are delayed after dynamic content/image reflow.
+    window.addEventListener("scroll", () => {
+      if (ticking) return;
+      const nearBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 900);
+      if (!nearBottom) return;
+      ticking = true;
+      loadNextPage_();
+      setTimeout(() => { ticking = false; }, 120);
+    }, { passive: true });
   }
 
   // --------- Help/Submit modal ----------
