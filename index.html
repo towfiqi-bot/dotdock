@@ -609,7 +609,8 @@
     trendsCacheHtml: "",
     trendsCacheScope: "",
     trendsCacheDonut: "",
-    trendsCacheConcentration: "—"
+    trendsCacheConcentration: "—",
+    autoFillGuard: false
   };
 
   // --------- Utilities ----------
@@ -1986,7 +1987,24 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
     }
 
     container.innerHTML = itemsToShow.map(renderCard).join("");
-      updateCommentCountBadges_();
+    updateCommentCountBadges_();
+
+    // If first batch is too short to make the page scrollable, auto-advance
+    // one page so users don't think the list is "stuck" at 6 cards.
+    if (!state.autoFillGuard && maxShown < total) {
+      const sentinel = document.getElementById("infiniteSentinel");
+      if (sentinel) {
+        const nearViewport = sentinel.getBoundingClientRect().top <= (window.innerHeight + 120);
+        if (nearViewport) {
+          state.autoFillGuard = true;
+          state.page += 1;
+          requestAnimationFrame(() => {
+            state.autoFillGuard = false;
+            render();
+          });
+        }
+      }
+    }
 }
 
   // --------- Modal ----------
