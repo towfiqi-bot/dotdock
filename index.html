@@ -39,6 +39,25 @@
       display: none !important;
     }
 
+    /* Skeleton loading for cards */
+    .dd-skeleton {
+      position: relative;
+      overflow: hidden;
+      background: #e5e7eb;
+      border-radius: 0.5rem;
+    }
+    .dd-skeleton::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+      animation: dd-shimmer 1.2s infinite;
+    }
+    @keyframes dd-shimmer {
+      100% { transform: translateX(100%); }
+    }
+
 </style>
 </head>
 
@@ -145,6 +164,20 @@
           </div>
           <div id="trendsList" class="mt-3 space-y-2 text-sm text-gray-600">
             Loading trends…
+          </div>
+        </section>
+
+        <!-- Live updates -->
+        <section id="liveUpdatesPanel" class="bg-white rounded-lg border border-gray-200 p-4">
+          <div class="flex items-center gap-2">
+            <span class="relative inline-flex h-3 w-3">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-70"></span>
+              <span class="relative inline-flex h-3 w-3 rounded-full border-2 border-rose-600 bg-white"></span>
+            </span>
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-rose-700">Live updates</h2>
+          </div>
+          <div id="liveUpdatesList" class="mt-3 space-y-2 text-sm text-gray-700">
+            Loading live updates…
           </div>
         </section>
 
@@ -364,6 +397,7 @@
         </div>
 
         <div id="cardsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
+        <div id="infiniteStatus" class="hidden sticky bottom-3 z-20 text-center text-xs text-gray-600 py-2"><span class="inline-block rounded-full border border-gray-200 bg-white/95 px-3 py-1 shadow-sm">Loading more…</span></div>
         <div id="infiniteSentinel" class="h-1"></div>
 
         <footer class="mt-10 text-center text-xs text-gray-500">
@@ -579,7 +613,7 @@
     overrideOrderMap: null,     // Map<string, number> to preserve rerank order
     overrideLabel: "",
     page: 1,
-    pageSize: 50,
+    pageSize: 6,                  // smaller initial paint; infinite scroll loads more
     wsStatusFilter: "all",
     wsTagFilter: "",
     sortMode: "newest",
@@ -590,7 +624,9 @@
     trendsCacheHtml: "",
     trendsCacheScope: "",
     trendsCacheDonut: "",
-    trendsCacheConcentration: "—"
+    trendsCacheConcentration: "—",
+    liveUpdatesTimer: null,
+    autoFillGuard: false
   };
 
   // --------- Utilities ----------
@@ -1615,11 +1651,56 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
     });
 
     if (!keepPage) state.page = 1;
+    renderLiveUpdatesPanel_();
     renderTrendsPanel_();
     render();
   }
 
   // --------- Rendering ----------
+  function renderLiveUpdatesPanel_() {
+    const listEl = document.getElementById("liveUpdatesList");
+    if (!listEl) return;
+
+    const src = (state.filteredItems && state.filteredItems.length)
+      ? state.filteredItems
+      : (state.allItems || []);
+
+    const latest = src
+      .slice()
+      .sort((a, b) => ((b.addedAt || b.modified || 0) - (a.addedAt || a.modified || 0)))
+      .slice(0, 5);
+
+    if (!latest.length) {
+      listEl.innerHTML = '<div class="text-xs text-gray-500">No recent updates yet.</div>';
+      return;
+    }
+
+    listEl.innerHTML = latest.map((item) => {
+      const ts = Number(item.addedAt || item.modified || 0) || 0;
+      const ago = formatAgoWords(ts);
+      const url = reportPageUrl(item.id, item.title || "");
+      return `
+        <a href="${url}" class="group block rounded-md px-1 py-1 hover:bg-rose-50 transition">
+          <div class="flex items-start gap-2">
+            <span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full border border-rose-500 bg-white"></span>
+            <div class="min-w-0">
+              <div class="text-gray-500 text-xs" data-live-ago="${ts}">${escapeHtml(ago)}</div>
+              <div class="text-sm text-gray-800 leading-snug line-clamp-2 group-hover:text-rose-700">${escapeHtml(item.title || "Untitled")}</div>
+            </div>
+          </div>
+        </a>
+      `;
+    }).join("");
+
+    if (state.liveUpdatesTimer) clearInterval(state.liveUpdatesTimer);
+    state.liveUpdatesTimer = setInterval(() => {
+      document.querySelectorAll("[data-live-ago]").forEach((el) => {
+        const ts = Number(el.getAttribute("data-live-ago") || 0) || 0;
+        el.textContent = formatAgoWords(ts);
+      });
+    }, 30000);
+  }
+
   function renderTrendsPanel_() {
     const listEl = document.getElementById("trendsList");
     const scopeEl = document.getElementById("trendsScope");
@@ -1918,6 +1999,29 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
     `;
   }
 
+  function renderCardSkeletons(count = 6) {
+    const container = document.getElementById("cardsContainer");
+    if (!container) return;
+    const blocks = Array.from({ length: count }).map(() => `
+      <article class="border border-gray-200 rounded-xl bg-white p-4">
+        <div class="flex gap-4">
+          <div class="dd-skeleton w-[120px] h-[170px] shrink-0"></div>
+          <div class="flex-1 space-y-3">
+            <div class="dd-skeleton h-4 w-28"></div>
+            <div class="dd-skeleton h-7 w-11/12"></div>
+            <div class="dd-skeleton h-7 w-3/4"></div>
+            <div class="grid grid-cols-3 gap-2 pt-1">
+              <div class="dd-skeleton h-9"></div>
+              <div class="dd-skeleton h-9"></div>
+              <div class="dd-skeleton h-9"></div>
+            </div>
+          </div>
+        </div>
+      </article>
+    `).join("");
+    container.innerHTML = blocks;
+  }
+
   function render() {
     const container = document.getElementById("cardsContainer");
     const info = document.getElementById("resultsInfo");
@@ -1944,7 +2048,25 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
     }
 
     container.innerHTML = itemsToShow.map(renderCard).join("");
-      updateCommentCountBadges_();
+    updateCommentCountBadges_();
+    window.dispatchEvent(new CustomEvent("dd:rendered"));
+
+    // If first batch is too short to make the page scrollable, auto-advance
+    // one page so users don't think the list is "stuck" at 6 cards.
+    if (!state.autoFillGuard && maxShown < total) {
+      const sentinel = document.getElementById("infiniteSentinel");
+      if (sentinel) {
+        const nearViewport = sentinel.getBoundingClientRect().top <= (window.innerHeight + 120);
+        if (nearViewport) {
+          state.autoFillGuard = true;
+          state.page += 1;
+          requestAnimationFrame(() => {
+            state.autoFillGuard = false;
+            render();
+          });
+        }
+      }
+    }
 }
 
   // --------- Modal ----------
@@ -2126,27 +2248,72 @@ function openPdfModalById(id) {
 
   // --------- Infinite scroll ----------
   function setupInfiniteScroll() {
-    const sentinel = document.getElementById("infiniteSentinel");
-    if (!("IntersectionObserver" in window)) return;
+    const statusEl = document.getElementById("infiniteStatus");
+    let statusTimer = null;
+    let statusShownAt = 0;
 
-    let ticking = false;
-    const obs = new IntersectionObserver(entries => {
-      const e = entries[0];
-      if (!e.isIntersecting) return;
-      if (ticking) return;
+    function setLoadingMore_(on) {
+      if (!statusEl) return;
+      if (statusTimer) { clearTimeout(statusTimer); statusTimer = null; }
+      if (on) {
+        statusEl.classList.remove("hidden");
+        statusShownAt = Date.now();
+      } else {
+        const elapsed = Date.now() - statusShownAt;
+        const wait = Math.max(0, 900 - elapsed); // visible long enough for humans to notice
+        statusTimer = setTimeout(() => statusEl.classList.add("hidden"), wait);
+      }
+    }
 
+    function loadNextPage_() {
       const total = state.filteredItems.length;
       const maxShown = state.page * state.pageSize;
-      if (maxShown >= total) return;
-
-      ticking = true;
+      if (maxShown >= total) return false;
       state.page += 1;
       render();
-      setTimeout(() => { ticking = false; }, 200);
-    }, { root: null, rootMargin: "700px 0px", threshold: 0 });
+      return true;
+    }
 
-    obs.observe(sentinel);
+    let scheduled = false;
+    function scheduleCheck_() {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+
+        const sentinel = document.getElementById("infiniteSentinel");
+        const preloadPx = 1200;
+        let nearBottom = false;
+
+        if (sentinel) {
+          const rect = sentinel.getBoundingClientRect();
+          nearBottom = rect.top <= (window.innerHeight + preloadPx);
+        } else {
+          nearBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - preloadPx);
+        }
+
+        if (!nearBottom) {
+          setLoadingMore_(false);
+          return;
+        }
+
+        // Load up to 3 pages per frame so short-page/tab-switch cases don't stall.
+        let loops = 0;
+        while (loops < 3 && loadNextPage_()) {
+          loops += 1;
+        }
+        setLoadingMore_(loops > 0);
+      });
+    }
+
+    window.addEventListener("scroll", scheduleCheck_, { passive: true });
+    window.addEventListener("resize", scheduleCheck_, { passive: true });
+    window.addEventListener("dd:rendered", scheduleCheck_);
+
+    // Initial check in case the first batch doesn't fill the viewport.
+    scheduleCheck_();
   }
+
 
   // --------- Help/Submit modal ----------
   function openHelpModal(kind) {
@@ -3511,6 +3678,8 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
     } else {
       // Keep header pill visible while first load runs
       setLiveHeaderStatus({ updatedAt: 0, newCount: 0 });
+      renderCardSkeletons(state.pageSize);
+      document.getElementById("resultsInfo").textContent = "Loading publications…";
       if (preferFreshFirst) {
         document.getElementById("resultsInfo").textContent = "Loading latest reports…";
       }
