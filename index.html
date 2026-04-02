@@ -1298,7 +1298,7 @@ Output:
     }
     const url = forceFresh ? withCb_(DATA_URL) : DATA_URL;
     const ac = new AbortController();
-    const timeoutMs = forceFresh ? 20000 : 12000;
+    const timeoutMs = forceFresh ? 35000 : 25000;
     const timer = setTimeout(() => ac.abort(), timeoutMs);
     let res;
     try {
@@ -1309,7 +1309,11 @@ Output:
         signal: ac.signal
       });
     } catch (e) {
-      if (ac.signal.aborted) throw new Error("Catalog request timed out. Please refresh.");
+      if (ac.signal.aborted) {
+        const err = new Error("Catalog request timed out.");
+        err.code = "TIMEOUT";
+        throw err;
+      }
       throw e;
     } finally {
       clearTimeout(timer);
@@ -3766,7 +3770,28 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
       refreshStatus.textContent = "Last updated: " + formatTime(Date.now());
     } catch (e) {
       if (!cached) {
-        document.getElementById("resultsInfo").textContent = "Error loading data: " + e.message;
+        const infoEl = document.getElementById("resultsInfo");
+        if (e && e.code === "TIMEOUT") {
+          infoEl.textContent = "Server is slow. Retrying…";
+          try {
+            const retry = prepareItems(await loadData(true));
+            state.allItems = retry;
+            cacheSet(retry);
+            buildFacetFilters();
+            refreshSearchSuggestData();
+            const { newCount } = computeNewMarkers_(retry);
+            setLiveHeaderStatus({ updatedAt: catalogMaxTimestamp_(retry), newCount });
+            commitSeenMaxOnce_(retry);
+            applyFilters();
+            renderReadingList();
+            renderCompare();
+            refreshStatus.textContent = "Last updated: " + formatTime(Date.now());
+          } catch (retryErr) {
+            infoEl.textContent = "Still loading from server… please wait.";
+          }
+        } else {
+          infoEl.textContent = "Error loading data: " + e.message;
+        }
       }
     }
 
