@@ -39,6 +39,25 @@
       display: none !important;
     }
 
+    /* Skeleton loading for cards */
+    .dd-skeleton {
+      position: relative;
+      overflow: hidden;
+      background: #e5e7eb;
+      border-radius: 0.5rem;
+    }
+    .dd-skeleton::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+      animation: dd-shimmer 1.2s infinite;
+    }
+    @keyframes dd-shimmer {
+      100% { transform: translateX(100%); }
+    }
+
 </style>
 </head>
 
@@ -579,7 +598,7 @@
     overrideOrderMap: null,     // Map<string, number> to preserve rerank order
     overrideLabel: "",
     page: 1,
-    pageSize: 8,                  // smaller initial paint; infinite scroll loads more
+    pageSize: 6,                  // smaller initial paint; infinite scroll loads more
     wsStatusFilter: "all",
     wsTagFilter: "",
     sortMode: "newest",
@@ -1916,6 +1935,29 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
 
       </article>
     `;
+  }
+
+  function renderCardSkeletons(count = 6) {
+    const container = document.getElementById("cardsContainer");
+    if (!container) return;
+    const blocks = Array.from({ length: count }).map(() => `
+      <article class="border border-gray-200 rounded-xl bg-white p-4">
+        <div class="flex gap-4">
+          <div class="dd-skeleton w-[120px] h-[170px] shrink-0"></div>
+          <div class="flex-1 space-y-3">
+            <div class="dd-skeleton h-4 w-28"></div>
+            <div class="dd-skeleton h-7 w-11/12"></div>
+            <div class="dd-skeleton h-7 w-3/4"></div>
+            <div class="grid grid-cols-3 gap-2 pt-1">
+              <div class="dd-skeleton h-9"></div>
+              <div class="dd-skeleton h-9"></div>
+              <div class="dd-skeleton h-9"></div>
+            </div>
+          </div>
+        </div>
+      </article>
+    `).join("");
+    container.innerHTML = blocks;
   }
 
   function render() {
@@ -3511,6 +3553,8 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
     } else {
       // Keep header pill visible while first load runs
       setLiveHeaderStatus({ updatedAt: 0, newCount: 0 });
+      renderCardSkeletons(state.pageSize);
+      document.getElementById("resultsInfo").textContent = "Loading publications…";
       if (preferFreshFirst) {
         document.getElementById("resultsInfo").textContent = "Loading latest reports…";
       }
