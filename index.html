@@ -717,8 +717,21 @@
   }
 
   // --------- Cache helpers ----------
+  function compactForCache_(data) {
+    // Keep cache small enough for localStorage by trimming oversized summaries.
+    return (Array.isArray(data) ? data : []).map((it) => {
+      const summary = String((it && it.summary) || "");
+      const slimSummary = summary.length > 320 ? (summary.slice(0, 320) + "…") : summary;
+      const base = (it && typeof it === "object") ? it : {};
+      return { ...base, summary: slimSummary };
+    });
+  }
+
   function cacheSet(data) {
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ time: Date.now(), data })); } catch (e) {}
+    try {
+      const slim = compactForCache_(data);
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ time: Date.now(), data: slim }));
+    } catch (e) {}
   }
   function cacheGet() {
     try {
@@ -1283,8 +1296,24 @@ Output:
       const cached = cacheGet();
       if (cached) return cached;
     }
-    const url = withCb_(DATA_URL);
-    const res = await fetch(url, { cache: "no-store", mode: "cors", credentials: "omit" });
+    const url = forceFresh ? withCb_(DATA_URL) : DATA_URL;
+    const ac = new AbortController();
+    const timeoutMs = forceFresh ? 20000 : 12000;
+    const timer = setTimeout(() => ac.abort(), timeoutMs);
+    let res;
+    try {
+      res = await fetch(url, {
+        cache: forceFresh ? "no-store" : "default",
+        mode: "cors",
+        credentials: "omit",
+        signal: ac.signal
+      });
+    } catch (e) {
+      if (ac.signal.aborted) throw new Error("Catalog request timed out. Please refresh.");
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
     if (!res.ok) throw new Error("Failed to load catalog (" + res.status + ")");
     const text = await res.text();
     let json;
@@ -3713,9 +3742,9 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
       }
     }
 
-    // Fetch fresh
+    // Fetch network data (cache-friendly first request)
     try {
-      const data = prepareItems(await loadData(true));
+      const data = prepareItems(await loadData(false));
       state.allItems = data;
       cacheSet(data);
       buildFacetFilters();
