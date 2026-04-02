@@ -398,6 +398,9 @@
 
         <div id="cardsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
         <div id="infiniteStatus" class="hidden sticky bottom-3 z-20 text-center text-xs text-gray-600 py-2"><span class="inline-block rounded-full border border-gray-200 bg-white/95 px-3 py-1 shadow-sm">Loading more…</span></div>
+        <div class="mt-2 mb-1 text-center">
+          <button id="loadMoreBtn" type="button" class="hidden px-4 py-2 rounded-md border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50">Load more</button>
+        </div>
         <div id="infiniteSentinel" class="h-1"></div>
 
         <footer class="mt-10 text-center text-xs text-gray-500">
@@ -2109,6 +2112,16 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
 
     container.innerHTML = itemsToShow.map(renderCard).join("");
     updateCommentCountBadges_();
+
+    const loadMoreBtn = document.getElementById("loadMoreBtn");
+    if (loadMoreBtn) {
+      const hasMore = maxShown < total;
+      loadMoreBtn.classList.toggle("hidden", !hasMore);
+      loadMoreBtn.textContent = hasMore ? `Load more (${Math.max(0, total - maxShown)} left)` : "All loaded";
+      loadMoreBtn.disabled = !hasMore;
+      loadMoreBtn.setAttribute("aria-disabled", hasMore ? "false" : "true");
+    }
+
     window.dispatchEvent(new CustomEvent("dd:rendered"));
 
     // If first batch is too short to make the page scrollable, auto-advance
@@ -3581,6 +3594,16 @@ setInterval(async () => {
       updateStickySearchDock_();
     });
     backToTopBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+
+    const loadMoreBtn = document.getElementById("loadMoreBtn");
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener("click", () => {
+        state.page += 1;
+        render();
+        // Keep UX obvious for manual mode on slow devices.
+        showToast("Loaded more publications.");
+      });
+    }
 
     // Initialize sticky dock once
     updateStickySearchDock_();
