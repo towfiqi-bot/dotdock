@@ -383,6 +383,7 @@
         </div>
 
         <div id="cardsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
+        <div id="infiniteStatus" class="hidden text-center text-xs text-gray-500 py-2">Loading more…</div>
         <div id="infiniteSentinel" class="h-1"></div>
 
         <footer class="mt-10 text-center text-xs text-gray-500">
@@ -2186,6 +2187,19 @@ function openPdfModalById(id) {
 
   // --------- Infinite scroll ----------
   function setupInfiniteScroll() {
+    const statusEl = document.getElementById("infiniteStatus");
+    let statusTimer = null;
+    function setLoadingMore_(on) {
+      if (!statusEl) return;
+      if (statusTimer) { clearTimeout(statusTimer); statusTimer = null; }
+      if (on) {
+        statusEl.textContent = "Loading more…";
+        statusEl.classList.remove("hidden");
+      } else {
+        statusTimer = setTimeout(() => statusEl.classList.add("hidden"), 120);
+      }
+    }
+
     function loadNextPage_() {
       const total = state.filteredItems.length;
       const maxShown = state.page * state.pageSize;
@@ -2209,6 +2223,7 @@ function openPdfModalById(id) {
           if (!loadNextPage_()) break;
           loops += 1;
         }
+        setLoadingMore_(loops > 0);
       });
     }
 
