@@ -383,7 +383,7 @@
         </div>
 
         <div id="cardsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
-        <div id="infiniteStatus" class="hidden text-center text-xs text-gray-500 py-2">Loading more…</div>
+        <div id="infiniteStatus" class="hidden sticky bottom-3 z-20 text-center text-xs text-gray-600 py-2"><span class="inline-block rounded-full border border-gray-200 bg-white/95 px-3 py-1 shadow-sm">Loading more…</span></div>
         <div id="infiniteSentinel" class="h-1"></div>
 
         <footer class="mt-10 text-center text-xs text-gray-500">
@@ -1989,6 +1989,7 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
 
     container.innerHTML = itemsToShow.map(renderCard).join("");
     updateCommentCountBadges_();
+    window.dispatchEvent(new CustomEvent("dd:rendered"));
 
     // If first batch is too short to make the page scrollable, auto-advance
     // one page so users don't think the list is "stuck" at 6 cards.
@@ -2190,16 +2191,16 @@ function openPdfModalById(id) {
     const statusEl = document.getElementById("infiniteStatus");
     let statusTimer = null;
     let statusShownAt = 0;
+
     function setLoadingMore_(on) {
       if (!statusEl) return;
       if (statusTimer) { clearTimeout(statusTimer); statusTimer = null; }
       if (on) {
-        statusEl.textContent = "Loading more…";
         statusEl.classList.remove("hidden");
         statusShownAt = Date.now();
       } else {
         const elapsed = Date.now() - statusShownAt;
-        const wait = Math.max(0, 550 - elapsed); // keep visible long enough to be noticed
+        const wait = Math.max(0, 900 - elapsed); // visible long enough for humans to notice
         statusTimer = setTimeout(() => statusEl.classList.add("hidden"), wait);
       }
     }
@@ -2219,12 +2220,26 @@ function openPdfModalById(id) {
       scheduled = true;
       requestAnimationFrame(() => {
         scheduled = false;
-        // Load up to 2 pages per frame when user is near the bottom.
+
+        const sentinel = document.getElementById("infiniteSentinel");
+        const preloadPx = 1200;
+        let nearBottom = false;
+
+        if (sentinel) {
+          const rect = sentinel.getBoundingClientRect();
+          nearBottom = rect.top <= (window.innerHeight + preloadPx);
+        } else {
+          nearBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - preloadPx);
+        }
+
+        if (!nearBottom) {
+          setLoadingMore_(false);
+          return;
+        }
+
+        // Load up to 3 pages per frame so short-page/tab-switch cases don't stall.
         let loops = 0;
-        while (loops < 2) {
-          const nearBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 900);
-          if (!nearBottom) break;
-          if (!loadNextPage_()) break;
+        while (loops < 3 && loadNextPage_()) {
           loops += 1;
         }
         setLoadingMore_(loops > 0);
@@ -2233,9 +2248,12 @@ function openPdfModalById(id) {
 
     window.addEventListener("scroll", scheduleCheck_, { passive: true });
     window.addEventListener("resize", scheduleCheck_, { passive: true });
-    // Initial check in case first batch is short.
+    window.addEventListener("dd:rendered", scheduleCheck_);
+
+    // Initial check in case the first batch doesn't fill the viewport.
     scheduleCheck_();
   }
+
 
   // --------- Help/Submit modal ----------
   function openHelpModal(kind) {
