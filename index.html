@@ -580,6 +580,11 @@
     "what","when","where","which","while","will","would","could","should","can","may","might","not","are","was","were",
     "in","on","at","to","of","a","an","as","by","or","be","is","it","we","our","you","i"
   ]);
+  const SEARCH_INTENT_WORDS = new Set([
+    "please","pls","show","find","search","give","get","need","want","tell","list","display","fetch",
+    "me","all","any","related","relation","relevant","about","regarding","topic","topics",
+    "pdf","pdfs","file","files","document","documents","report","reports","publication","publications"
+  ]);
   const TREND_TOPIC_ALIASES = new Map([
     ["gen ai", "generative ai"],
     ["genai", "generative ai"],
@@ -1329,8 +1334,30 @@ Output:
     return Array.from(out).filter(x => x.length >= 2);
   }
 
-  function parseQuery(q) {
+  function normalizeUserQueryForSearch_(q) {
     const raw = String(q || "").trim();
+    if (!raw) return "";
+
+    // If user asks natural-language style, keep only the semantic tail.
+    const tailMatch = raw.match(/(?:related to|about|regarding|on)\s+(.+)$/i);
+    const candidate = tailMatch ? tailMatch[1] : raw;
+
+    const toks = tokenizeLoose(candidate).filter(t => {
+      if (!t || t.length < 2) return false;
+      if (STOPWORDS.has(t)) return false;
+      if (SEARCH_INTENT_WORDS.has(t)) return false;
+      return true;
+    });
+
+    // Keep user input if cleanup becomes too aggressive.
+    if (!toks.length) return raw;
+
+    // Keep acronyms/keywords but avoid duplicate words.
+    return Array.from(new Set(toks)).join(" ");
+  }
+
+  function parseQuery(q) {
+    const raw = normalizeUserQueryForSearch_(q);
     if (!raw) return { must: [], not: [] };
 
     const phrases = [];
@@ -3071,8 +3098,9 @@ setInterval(async () => {
     }
 
     async function doSearch(opts = {}) {
-      state.searchQuery = searchInput.value.trim();
-      if (opts && opts.remember) rememberRecentSearch(state.searchQuery);
+      const rawInputQuery = searchInput.value.trim();
+      state.searchQuery = normalizeUserQueryForSearch_(rawInputQuery);
+      if (opts && opts.remember) rememberRecentSearch(rawInputQuery || state.searchQuery);
       if (opts && opts.closeSuggest) hideSuggest();
 
       const q = state.searchQuery;
@@ -3156,8 +3184,8 @@ setInterval(async () => {
     searchInput.addEventListener("input", () => {
       syncSearchClearBtn();
 
-      // Always show local results instantly while typing
-      state.searchQuery = searchInput.value.trim();
+      // Always show local results instantly while typing (normalized for natural language queries)
+      state.searchQuery = normalizeUserQueryForSearch_(searchInput.value.trim());
 
       // While typing, show normal results (clear any AI override)
       if (state.overrideLabel) clearOverrideResults_();
