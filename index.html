@@ -2186,7 +2186,6 @@ function openPdfModalById(id) {
 
   // --------- Infinite scroll ----------
   function setupInfiniteScroll() {
-    const sentinel = document.getElementById("infiniteSentinel");
     function loadNextPage_() {
       const total = state.filteredItems.length;
       const maxShown = state.page * state.pageSize;
@@ -2196,29 +2195,27 @@ function openPdfModalById(id) {
       return true;
     }
 
-    let ticking = false;
-    if ("IntersectionObserver" in window && sentinel) {
-      const obs = new IntersectionObserver(entries => {
-        const e = entries[0];
-        if (!e.isIntersecting) return;
-        if (ticking) return;
-        ticking = true;
-        loadNextPage_();
-        setTimeout(() => { ticking = false; }, 120);
-      }, { root: null, rootMargin: "1200px 0px", threshold: 0 });
-      obs.observe(sentinel);
+    let scheduled = false;
+    function scheduleCheck_() {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        // Load up to 2 pages per frame when user is near the bottom.
+        let loops = 0;
+        while (loops < 2) {
+          const nearBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 900);
+          if (!nearBottom) break;
+          if (!loadNextPage_()) break;
+          loops += 1;
+        }
+      });
     }
 
-    // Fallback: near-bottom scroll loader for browsers/layouts where observer
-    // callbacks are delayed after dynamic content/image reflow.
-    window.addEventListener("scroll", () => {
-      if (ticking) return;
-      const nearBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 900);
-      if (!nearBottom) return;
-      ticking = true;
-      loadNextPage_();
-      setTimeout(() => { ticking = false; }, 120);
-    }, { passive: true });
+    window.addEventListener("scroll", scheduleCheck_, { passive: true });
+    window.addEventListener("resize", scheduleCheck_, { passive: true });
+    // Initial check in case first batch is short.
+    scheduleCheck_();
   }
 
   // --------- Help/Submit modal ----------
