@@ -383,6 +383,7 @@
         <div class="flex items-center justify-between gap-3 mb-3">
           <p id="resultsInfo" class="text-sm text-gray-600">Loading publications…</p>
           <div class="flex items-center gap-2">
+            <button id="loadMoreTopBtn" type="button" class="hidden md:inline-flex px-3 py-1.5 rounded-md border border-gray-300 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50">Load more</button>
             <label for="sortSelect" class="text-xs text-gray-500 hidden sm:block">Sort</label>
             <select id="sortSelect" class="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white">
               <option value="newest">Sort (Default - Newest)</option>
@@ -399,7 +400,7 @@
         <div id="cardsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
         <div id="infiniteStatus" class="hidden sticky bottom-3 z-20 text-center text-xs text-gray-600 py-2"><span class="inline-block rounded-full border border-gray-200 bg-white/95 px-3 py-1 shadow-sm">Loading more…</span></div>
         <div class="mt-2 mb-1 text-center">
-          <button id="loadMoreBtn" type="button" class="hidden px-4 py-2 rounded-md border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50">Load more</button>
+          <button id="loadMoreBtn" type="button" class="hidden px-4 py-2 rounded-md border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 md:sticky md:bottom-3">Load more</button>
         </div>
         <div id="infiniteSentinel" class="h-1"></div>
 
@@ -2114,13 +2115,17 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
     updateCommentCountBadges_();
 
     const loadMoreBtn = document.getElementById("loadMoreBtn");
-    if (loadMoreBtn) {
-      const hasMore = maxShown < total;
-      loadMoreBtn.classList.toggle("hidden", !hasMore);
-      loadMoreBtn.textContent = hasMore ? `Load more (${Math.max(0, total - maxShown)} left)` : "All loaded";
-      loadMoreBtn.disabled = !hasMore;
-      loadMoreBtn.setAttribute("aria-disabled", hasMore ? "false" : "true");
-    }
+    const loadMoreTopBtn = document.getElementById("loadMoreTopBtn");
+    const hasMore = maxShown < total;
+    const moreLabel = hasMore ? `Load more (${Math.max(0, total - maxShown)} left)` : "All loaded";
+
+    [loadMoreBtn, loadMoreTopBtn].forEach((btn) => {
+      if (!btn) return;
+      btn.classList.toggle("hidden", !hasMore);
+      btn.textContent = moreLabel;
+      btn.disabled = !hasMore;
+      btn.setAttribute("aria-disabled", hasMore ? "false" : "true");
+    });
 
     window.dispatchEvent(new CustomEvent("dd:rendered"));
 
@@ -3595,15 +3600,17 @@ setInterval(async () => {
     });
     backToTopBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
-    const loadMoreBtn = document.getElementById("loadMoreBtn");
-    if (loadMoreBtn) {
-      loadMoreBtn.addEventListener("click", () => {
-        state.page += 1;
-        render();
-        // Keep UX obvious for manual mode on slow devices.
-        showToast("Loaded more publications.");
-      });
+    function handleLoadMoreClick_() {
+      state.page += 1;
+      render();
+      // Keep UX obvious for manual mode on slow devices.
+      showToast("Loaded more publications.");
     }
+
+    const loadMoreBtn = document.getElementById("loadMoreBtn");
+    const loadMoreTopBtn = document.getElementById("loadMoreTopBtn");
+    if (loadMoreBtn) loadMoreBtn.addEventListener("click", handleLoadMoreClick_);
+    if (loadMoreTopBtn) loadMoreTopBtn.addEventListener("click", handleLoadMoreClick_);
 
     // Initialize sticky dock once
     updateStickySearchDock_();
