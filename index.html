@@ -130,7 +130,7 @@
     <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
 
       <!-- Sidebar -->
-      <aside id="sidebar" class="md:col-span-3 space-y-6 md:sticky md:top-28 self-start md:max-h-[calc(100vh-7rem)] md:overflow-auto md:pr-1">
+      <aside id="sidebar" class="order-2 md:order-1 md:col-span-3 space-y-6 md:sticky md:top-28 self-start md:max-h-[calc(100vh-7rem)] md:overflow-auto md:pr-1">
 
         <!-- Sidebar collapse (desktop) -->
         <div class="hidden md:flex items-center justify-end -mt-1">
@@ -333,7 +333,7 @@
       </aside>
 
       <!-- Catalogue -->
-      <section id="catalogue" class="md:col-span-9">
+      <section id="catalogue" class="order-1 md:order-2 md:col-span-9">
     <!-- Top search -->
     <section id="searchSection" class="mb-4">
       <div class="bg-white border border-gray-200 rounded-lg p-3 md:p-4 shadow-sm">
@@ -595,6 +595,8 @@
     ["esg", "environment social governance"]
   ]);
   const TREND_MIN_FREQ = 2;
+  const TOPIC_MIN_FREQ = 2;
+  const TOPIC_MAX_COUNT = 80;
 
   const state = {
     tab: "home",                  // home | today
@@ -1480,34 +1482,42 @@ Output:
   // --------- Facets ----------
   function buildTopicListFromTitles() {
     const freq = new Map();
+    const canonical = (raw) => {
+      const n = normalizeText(raw);
+      if (!n) return "";
+      return TREND_TOPIC_ALIASES.get(n) || n;
+    };
 
     for (const item of state.allItems) {
       const seen = new Set();
 
       // Title-derived topics
       for (const w of (item._titleTokens || [])) {
-        if (!w) continue;
-        if (w.length < 4) continue;
-        if (STOPWORDS.has(w)) continue;
-        if (seen.has(w)) continue;
-        seen.add(w);
-        freq.set(w, (freq.get(w) || 0) + 1);
+        const k = canonical(w);
+        if (!k) continue;
+        if (k.length < 4) continue;
+        if (STOPWORDS.has(k)) continue;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        freq.set(k, (freq.get(k) || 0) + 1);
       }
 
       // AI tags extracted from summary ("Tags:") — may include multi-word phrases
       for (const tag of (item._aiTags || [])) {
-        if (!tag) continue;
-        if (tag.length < 2) continue;
-        if (STOPWORDS.has(tag)) continue;
-        if (seen.has(tag)) continue;
-        seen.add(tag);
-        freq.set(tag, (freq.get(tag) || 0) + 1);
+        const k = canonical(tag);
+        if (!k) continue;
+        if (k.length < 2) continue;
+        if (STOPWORDS.has(k)) continue;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        freq.set(k, (freq.get(k) || 0) + 1);
       }
     }
 
     const list = Array.from(freq.entries())
+      .filter(([,count]) => count >= TOPIC_MIN_FREQ)
       .sort((a,b) => (b[1] - a[1]) || a[0].localeCompare(b[0]))
-      .slice(0, 60)
+      .slice(0, TOPIC_MAX_COUNT)
       .map(([topic,count]) => ({ topic, count }));
 
     state.topicList = list;
@@ -2964,8 +2974,11 @@ setInterval(() => {
   if (ts) setLiveHeaderStatus({ updatedAt: ts, newCount: nc }); // preserve "ago" + "new"
 }, 30000);
     
-const AUTO_REFRESH_MS = 5 * 60 * 1000;
-setInterval(async () => {
+const AUTO_REFRESH_MS = 60 * 1000;
+let _refreshInFlight = false;
+async function refreshCatalogInBackground_(notify = true) {
+  if (_refreshInFlight) return;
+  _refreshInFlight = true;
   try {
     const data = prepareItems(await loadData(true));
     // quick change detection: length + newest modified
@@ -2982,12 +2995,18 @@ setInterval(async () => {
       applyFilters(true); // keep page/scroll logic steadier
       renderReadingList();
       renderCompare();
-      showToast("New reports loaded.");
+      if (notify) showToast("New reports loaded.");
     }
   } catch (e) {
     // ignore refresh errors silently
+  } finally {
+    _refreshInFlight = false;
   }
-}, AUTO_REFRESH_MS);
+}
+setInterval(() => { refreshCatalogInBackground_(true); }, AUTO_REFRESH_MS);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") refreshCatalogInBackground_(false);
+});
 
     const catSection = document.getElementById("categoryFilterSection");
     if (!ENABLE_CATEGORY_FILTER && catSection) {
