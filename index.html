@@ -113,7 +113,7 @@
                   </span>
 
                   <span id="liveNewText"
-                        class="hidden px-2 py-1 rounded-full border border-amber-200 bg-amber-50 text-amber-800">
+                        class="hidden px-2 py-1 rounded-full border border-amber-200 bg-amber-50 text-amber-800 cursor-pointer hover:bg-amber-100">
                     New: 0
                   </span>
                 </div>
@@ -339,7 +339,7 @@
       <div class="bg-white border border-gray-200 rounded-lg p-3 md:p-4 shadow-sm">
         <div>
           <div id="searchWrap" class="relative">
-          <div class="flex flex-col sm:flex-row sm:items-center gap-2 bg-white border border-gray-300 rounded-full px-5 py-3 shadow-sm focus-within:ring-2 focus-within:ring-amber-200">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2 bg-white border border-gray-300 rounded-xl px-5 py-3 shadow-sm focus-within:ring-2 focus-within:ring-amber-200">
             <div class="flex items-center gap-3 w-full">
             <svg class="h-5 w-5 text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="11" cy="11" r="7"></circle>
@@ -2126,7 +2126,7 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
 
     [loadMoreBtn].forEach((btn) => {
       if (!btn) return;
-      btn.classList.toggle("hidden", !hasMore);
+      btn.classList.remove("hidden");
       btn.textContent = moreLabel;
       btn.disabled = !hasMore;
       btn.setAttribute("aria-disabled", hasMore ? "false" : "true");
@@ -2689,6 +2689,7 @@ function commitSeenMaxOnce_(items) {
 
 function setupNewPostsBtn_() {
   const btn = document.getElementById("newPostsBtn");
+  const livePill = document.getElementById("liveNewText");
   if (!btn) return;
 
   function updateBtn() {
@@ -2713,6 +2714,14 @@ function setupNewPostsBtn_() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   });
+
+  if (livePill) {
+    livePill.addEventListener("click", () => {
+      const u = new URL(location.href);
+      u.searchParams.set("tab", "today");
+      location.href = u.toString();
+    });
+  }
 
   updateBtn();
 }
@@ -3615,6 +3624,12 @@ document.addEventListener("visibilitychange", () => {
     backToTopBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
     function handleLoadMoreClick_() {
+      const total = state.filteredItems.length;
+      const maxShown = state.page * state.pageSize;
+      if (maxShown >= total) {
+        showToast("All reports loaded.");
+        return;
+      }
       state.page += 1;
       render();
       // Keep UX obvious for manual mode on slow devices.
