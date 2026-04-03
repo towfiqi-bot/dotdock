@@ -2126,7 +2126,8 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
 
     [loadMoreBtn].forEach((btn) => {
       if (!btn) return;
-      btn.classList.remove("hidden");
+      const shouldReveal = hasMore && (state.page > 1 || window.scrollY > 220);
+      btn.classList.toggle("hidden", !shouldReveal);
       btn.textContent = moreLabel;
       btn.disabled = !hasMore;
       btn.setAttribute("aria-disabled", hasMore ? "false" : "true");
@@ -2151,6 +2152,16 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
       }
     }
 }
+
+  function syncLoadMoreBtnVisibility_() {
+    const btn = document.getElementById("loadMoreBtn");
+    if (!btn) return;
+    const total = state.filteredItems.length;
+    const maxShown = state.page * state.pageSize;
+    const hasMore = maxShown < total;
+    const shouldReveal = hasMore && (state.page > 1 || window.scrollY > 220);
+    btn.classList.toggle("hidden", !shouldReveal);
+  }
 
   // --------- Modal ----------
   function openPdfModal(item) {
@@ -2877,8 +2888,26 @@ function setupNewPostsBtn_() {
     const trendsList = document.getElementById("trendsList");
     const trendsRangeToday = document.getElementById("trendsRangeToday");
     const trendsRange7d = document.getElementById("trendsRange7d");
+    const navHome = document.getElementById("navHome");
+    const navToday = document.getElementById("navToday");
 
     setTabFromUrl();
+
+    function switchTab_(tab) {
+      state.tab = (tab === "today") ? "today" : "home";
+      const u = new URL(location.href);
+      if (state.tab === "today") u.searchParams.set("tab", "today");
+      else u.searchParams.delete("tab");
+      history.replaceState({}, "", u.toString());
+      setTabFromUrl();
+      applyFilters(true);
+      // Ensure fresh data check after tab switches without full page reload.
+      refreshCatalogInBackground_(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    if (navHome) navHome.addEventListener("click", (e) => { e.preventDefault(); switchTab_("home"); });
+    if (navToday) navToday.addEventListener("click", (e) => { e.preventDefault(); switchTab_("today"); });
 
     if (trendsList) {
       trendsList.addEventListener("click", (e) => {
@@ -3620,6 +3649,7 @@ document.addEventListener("visibilitychange", () => {
 
       // Sticky search dock (desktop)
       updateStickySearchDock_();
+      syncLoadMoreBtnVisibility_();
     });
     backToTopBtn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
