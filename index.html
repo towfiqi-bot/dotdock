@@ -76,9 +76,12 @@
           <div class="flex-1">
             <div class="flex flex-col md:flex-row md:items-baseline md:justify-between gap-2">
               <div>
-                <h1 class="brand-title text-2xl md:text-3xl font-semibold text-gray-900 tracking-tight">dotdock</h1>
+                <div class="text-sm md:text-base font-semibold text-gray-900 tracking-tight">dotdock</div>
+                <h1 class="brand-title text-xl md:text-3xl font-semibold text-gray-900 tracking-tight">
+                  Curated reports by topic, with faster answers.
+                </h1>
                 <p class="brand-tagline mt-1 text-amber-600 text-[10px] md:text-xs font-semibold uppercase tracking-[0.14em] not-italic">
-                  Find your dots. Feed your curiosity
+                  Find your dots. Feed your curiosity.
                 </p>
              </div>
 
@@ -184,11 +187,6 @@
         <!-- Filters -->
         <section class="bg-white rounded-lg border border-gray-200 p-4">
           <h2 class="text-sm font-semibold text-gray-700 mb-2">Filters</h2>
-
-          <label class="flex items-center gap-2 mb-3 text-sm text-gray-700">
-            <input id="towfiqPicksOnly" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-amber-600">
-            <span>Towfiq's Picks only</span>
-          </label>
 
           <div class="space-y-4">
 
@@ -339,10 +337,6 @@
 
       <!-- Catalogue -->
       <section id="catalogue" class="md:col-span-9">
-        <div class="mb-3 text-center text-sm md:text-base text-gray-600">
-          A living intelligence library: curated reports, tracked updates, and faster answers—so you never miss what matters.
-        </div>
-
     <!-- Top search -->
     <section id="searchSection" class="mb-4">
       <div class="bg-white border border-gray-200 rounded-lg p-3 md:p-4 shadow-sm">
@@ -388,7 +382,6 @@
         <div class="flex items-center justify-between gap-3 mb-3">
           <p id="resultsInfo" class="text-sm text-gray-600">Loading publications…</p>
           <div class="flex items-center gap-2">
-            <button id="loadMoreTopBtn" type="button" class="hidden md:inline-flex px-3 py-1.5 rounded-md border border-gray-300 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50">Load more</button>
             <label for="sortSelect" class="text-xs text-gray-500 hidden sm:block">Sort</label>
             <select id="sortSelect" class="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white">
               <option value="newest">Sort (Default - Newest)</option>
@@ -410,7 +403,7 @@
         <div id="infiniteSentinel" class="h-1"></div>
 
         <footer class="mt-10 text-center text-xs text-gray-500">
-          © Towfiq
+          © 2026 Towfiq — Platform and original content. Third-party PDFs belong to their respective owners.
         </footer>
       </section>
     </div>
@@ -584,11 +577,6 @@
   const SUBMIT_FORM_URL = "";  // optional: link to a Google Form / Typeform
   const CONTACT_EMAIL = "";    // optional: submission mailto fallback if you want
 
-  // Admin-curated picks (no database required): add report IDs here.
-  const TOWFIQ_PICKS_IDS = new Set([
-    // "1AbCdEfGhIjKlMnOpQrStUvWxYz"
-  ]);
-
   const STOPWORDS = new Set([
     "the","and","for","with","that","this","from","into","your","about","their","they","them","then","than",
     "what","when","where","which","while","will","would","could","should","can","may","might","not","are","was","were",
@@ -635,7 +623,6 @@
     pageSize: 6,                  // smaller initial paint; infinite scroll loads more
     wsStatusFilter: "all",
     wsTagFilter: "",
-    onlyTowfiqPicks: false,
     sortMode: "newest",
     scoreById: new Map(),
     topicList: [],                // [{topic,count}]
@@ -729,10 +716,6 @@
   function viewPageUrl(fileId, title) {
     const base = `report.html?id=${encodeURIComponent(fileId)}&view=1`;
     return title ? `${base}&t=${encodeURIComponent(title)}` : base;
-  }
-
-  function isTowfiqPick_(id) {
-    return TOWFIQ_PICKS_IDS.has(String(id || ""));
   }
 
   // --------- Cache helpers ----------
@@ -1664,9 +1647,8 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
 
       const tags = wsTags(item.id);
       const matchesTags = tagNeedles.length === 0 || tagNeedles.every(t => tags.includes(t));
-      const matchesTowfiqPick = !state.onlyTowfiqPicks || isTowfiqPick_(item.id);
 
-      const passes = matchesTab && matchesOverride && matchesTopic && matchesCat && matchesYear && matchesStatus && matchesTags && matchesTowfiqPick;
+      const passes = matchesTab && matchesOverride && matchesTopic && matchesCat && matchesYear && matchesStatus && matchesTags;
       if (!passes) return false;
       if (!matchesText) return false;
 
@@ -1978,7 +1960,6 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
               ${addedTs ? `<span class="text-gray-300">•</span><span>${escapeHtml(addedLabel)}</span>` : ``}
               ${updatedTs ? `<span class="text-gray-300">•</span><span>${escapeHtml(updatedLabel)}</span>` : ``}
               ${isNew ? `<span class="ml-2 px-2 py-0.5 rounded-full border border-red-200 bg-red-50 text-red-700 text-[10px] font-bold tracking-wide">NEW</span>` : ``}
-              ${isTowfiqPick_(item.id) ? `<span class="px-2 py-0.5 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 text-[10px] font-bold tracking-wide">Towfiq's Pick</span>` : ``}
               ${pinned ? `<span class="text-amber-600 flex items-center gap-1 shrink-0 ml-auto" title="Pinned">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2l-1 1v5.2l4.6 4.6-1.4 1.4L11 9.6V3l-1-1h4zM5 14l5 5v3H8v-2.2L3.4 15.4 5 14z"/></svg>
                 <span class="text-xs font-semibold">Pinned</span></span>` : ""}
@@ -2132,11 +2113,10 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
     updateCommentCountBadges_();
 
     const loadMoreBtn = document.getElementById("loadMoreBtn");
-    const loadMoreTopBtn = document.getElementById("loadMoreTopBtn");
     const hasMore = maxShown < total;
     const moreLabel = hasMore ? `Load more (${Math.max(0, total - maxShown)} left)` : "All loaded";
 
-    [loadMoreBtn, loadMoreTopBtn].forEach((btn) => {
+    [loadMoreBtn].forEach((btn) => {
       if (!btn) return;
       btn.classList.toggle("hidden", !hasMore);
       btn.textContent = moreLabel;
@@ -3381,11 +3361,8 @@ setInterval(async () => {
       state.selectedYears.clear();
       state.wsStatusFilter = "all";
       state.wsTagFilter = "";
-      state.onlyTowfiqPicks = false;
       wsStatusFilter.value = "all";
       wsTagFilter.value = "";
-      const towfiqPicksOnly = document.getElementById("towfiqPicksOnly");
-      if (towfiqPicksOnly) towfiqPicksOnly.checked = false;
 
       document.querySelectorAll("#topicFilters input[type=checkbox], #categoryFilters input[type=checkbox], #yearFilters input[type=checkbox]")
         .forEach(cb => cb.checked = false);
@@ -3418,14 +3395,6 @@ setInterval(async () => {
       state.wsTagFilter = wsTagFilter.value;
       applyFilters();
     });
-    const towfiqPicksOnly = document.getElementById("towfiqPicksOnly");
-    if (towfiqPicksOnly) {
-      towfiqPicksOnly.checked = !!state.onlyTowfiqPicks;
-      towfiqPicksOnly.addEventListener("change", () => {
-        state.onlyTowfiqPicks = !!towfiqPicksOnly.checked;
-        applyFilters();
-      });
-    }
     exportWsBtn.addEventListener("click", exportWorkspace);
 
     clearCompareBtn.addEventListener("click", () => {
@@ -3636,9 +3605,7 @@ setInterval(async () => {
     }
 
     const loadMoreBtn = document.getElementById("loadMoreBtn");
-    const loadMoreTopBtn = document.getElementById("loadMoreTopBtn");
     if (loadMoreBtn) loadMoreBtn.addEventListener("click", handleLoadMoreClick_);
-    if (loadMoreTopBtn) loadMoreTopBtn.addEventListener("click", handleLoadMoreClick_);
 
     // Initialize sticky dock once
     updateStickySearchDock_();
