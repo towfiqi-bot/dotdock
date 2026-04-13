@@ -35,7 +35,8 @@
 
     /* Hide sticky UI while an overlay (PDF/Compare) is open */
     body.dd-overlay-open #stickySearchDock,
-    body.dd-overlay-open #sidebarShowBtn {
+    body.dd-overlay-open #sidebarShowBtn,
+    body.dd-overlay-open #readingListDock {
       display: none !important;
     }
 
@@ -84,6 +85,12 @@
 
               <!-- Top menu -->
               <div class="flex flex-col items-end gap-1">
+                <div id="authHeaderBox" class="w-full flex flex-wrap items-center justify-end gap-2 text-[11px] text-gray-600 mb-1">
+                  <span id="authStatusText" class="hidden px-2 py-1 rounded-full border border-gray-200 bg-white"></span>
+                  <button id="authOpenModalBtn" type="button" class="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50">Sign in</button>
+                  <button id="authLogoutBtn" type="button" class="hidden px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50">Logout</button>
+                </div>
+
                 <nav class="flex items-center gap-5 text-sm font-medium text-gray-700">
                   <a id="navHome" href="index.html" class="hover:text-amber-700">Home</a>
                   <a id="navToday" href="index.html?tab=today" class="hover:text-amber-700">Added Today</a>
@@ -117,6 +124,7 @@
                     New: 0
                   </span>
                 </div>
+
               </div>
             </div>
           </div>
@@ -238,30 +246,6 @@
           <div id="userRefreshStatus" class="text-xs text-gray-500 mt-2"></div>
         </section>
 
-        <!-- Reading list -->
-        <section class="bg-white rounded-lg border border-gray-200 p-4">
-          <div class="flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-gray-700">Reading list</h2>
-            <button id="toggleReadingList"
-                    class="text-xs font-semibold text-amber-700 hover:underline">
-              Show
-            </button>
-          </div>
-
-          <div id="readingListEmpty" class="text-xs text-gray-500 mt-2">
-            No items yet. Click “Add to reading list” on any card.
-          </div>
-
-          <div id="readingListWrap" class="hidden mt-3 space-y-2"></div>
-
-          <div class="mt-3 flex gap-2">
-            <button id="clearReadingListBtn"
-                    class="px-3 py-1.5 text-xs border border-gray-300 rounded bg-white hover:bg-gray-50">
-              Clear list
-            </button>
-          </div>
-        </section>
-
         <!-- Search and compare -->
         <section class="bg-white rounded-lg border border-gray-200 p-4">
           <div class="flex items-center justify-between">
@@ -319,7 +303,6 @@
                   class="mt-3 w-full px-3 py-2 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50">
             Export my workspace
           </button>
-
           <div class="text-[11px] text-gray-500 mt-2">
             Saved locally in your browser (no login).
           </div>
@@ -333,7 +316,7 @@
       </aside>
 
       <!-- Catalogue -->
-      <section id="catalogue" class="order-1 md:order-2 md:col-span-9">
+      <section id="catalogue" class="order-1 md:order-2 md:col-span-9 xl:col-span-7">
     <!-- Top search -->
     <section id="searchSection" class="mb-4">
       <div class="bg-white border border-gray-200 rounded-lg p-3 md:p-4 shadow-sm">
@@ -380,7 +363,7 @@
           <p id="resultsInfo" class="text-sm text-gray-600">Loading publications…</p>
           <div class="flex items-center gap-2">
             <button id="loadMoreTopBtn" type="button" class="hidden md:inline-flex px-3 py-1.5 rounded-md border border-gray-300 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50">Load more</button>
-            <label for="sortSelect" class="text-xs text-gray-500 hidden sm:block">Sort</label>
+                        <label for="sortSelect" class="text-xs text-gray-500 hidden sm:block">Sort</label>
             <select id="sortSelect" class="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white">
               <option value="newest">Sort (Default - Newest)</option>
               <option value="updated_newest">Recently Updated</option>
@@ -401,6 +384,29 @@
           © 2026 Towfiq — Platform and original content. Third-party PDFs belong to their respective owners.
         </footer>
       </section>
+      <!-- Reading list rail (desktop right side only; does not overlap cards) -->
+      <aside id="readingListRail" class="order-3 hidden xl:block xl:col-span-2">
+        <div id="readingListDock" class="hidden sticky top-28 bg-white border border-gray-200 rounded-xl shadow-sm p-3">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-gray-700">Reading list</h2>
+            <div class="flex items-center gap-2">
+              <span id="readingListCount" class="px-2 py-0.5 rounded-full border border-amber-200 bg-amber-50 text-xs font-semibold text-amber-700">0</span>
+              <button id="toggleReadingList" class="text-xs font-semibold text-amber-700 hover:underline">Hide</button>
+            </div>
+          </div>
+
+          <div id="readingListEmpty" class="text-xs text-gray-500 mt-2 hidden">
+            No items yet. Click “Add to reading list” on any card.
+          </div>
+
+          <div id="readingListWrap" class="mt-3 max-h-[62vh] overflow-auto space-y-3"></div>
+
+          <div class="mt-3">
+            <button id="clearReadingListBtn" class="w-full px-3 py-1.5 text-xs border border-gray-300 rounded bg-white hover:bg-gray-50">Clear list</button>
+          </div>
+        </div>
+      </aside>
+
     </div>
   </main>
 
@@ -413,7 +419,7 @@
   <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-gray-900 text-white text-sm px-4 py-2 rounded shadow-lg"></div>
 
   <!-- Sticky Search Dock (desktop): appears after scrolling past the main search -->
-  <div id="stickySearchDock" class="hidden md:hidden fixed top-20 right-4 z-[65]">
+  <div id="stickySearchDock" class="hidden md:hidden fixed top-28 right-4 z-[65]">
     <div class="bg-white/95 backdrop-blur border border-gray-200 rounded-full shadow-lg px-3 py-2 flex items-center gap-2">
       <svg class="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="11" cy="11" r="7"></circle>
@@ -453,6 +459,9 @@
   </button>
 
 
+
+
+
   <!-- PDF Modal -->
   <div id="pdfModal" class="hidden fixed inset-0 z-50">
     <div class="absolute inset-0 bg-black/60" id="pdfModalBackdrop"></div>
@@ -462,11 +471,6 @@
         <div class="flex items-center gap-3 px-3 md:px-4 py-1.5 md:py-2 border-b border-gray-200">
           <div class="font-semibold text-gray-900 truncate text-sm md:text-base" id="pdfModalTitle">Report</div>
           <div class="ml-auto flex gap-2">
-            <a id="pdfModalView"
-               target="_blank" rel="noopener"
-               class="px-3 py-1.5 text-sm font-semibold bg-amber-600 text-white rounded hover:bg-amber-700">
-              View PDF (new tab)
-            </a>
             <button id="pdfModalClose"
                     class="px-3 py-1.5 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50">
               Close
@@ -540,11 +544,78 @@
     </div>
   </div>
 
+  <!-- Auth Modal -->
+  <div id="authModal" class="hidden fixed inset-0 z-[90]" aria-hidden="true">
+    <div id="authModalBackdrop" class="absolute inset-0 bg-black/60"></div>
+    <div class="relative max-w-md mx-auto mt-10 md:mt-14 p-3 modal-anim">
+      <div class="bg-white rounded-lg border border-gray-200 shadow-xl overflow-hidden">
+        <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200">
+          <div class="font-semibold text-gray-900">Sign in to dotdock</div>
+          <button id="authModalClose" class="px-3 py-1.5 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50">Close</button>
+        </div>
+
+        <div class="px-4 py-4">
+          <button id="authGoogleBtn" type="button"
+                  class="w-full px-3 py-2 text-sm font-semibold border border-gray-300 rounded bg-white hover:bg-gray-50">
+            Continue with Google
+          </button>
+
+          <div class="relative my-4 text-center">
+            <div class="absolute inset-x-0 top-1/2 border-t border-gray-200"></div>
+            <span class="relative px-2 bg-white text-xs text-gray-500">or email</span>
+          </div>
+
+          <form id="authEmailForm" class="space-y-2">
+            <input id="authEmailInput" type="email" autocomplete="email" placeholder="Email"
+                   class="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+            <input id="authPasswordInput" type="password" autocomplete="current-password" placeholder="Password"
+                   class="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+            <div class="grid grid-cols-2 gap-2">
+              <button id="authEmailLoginBtn" type="submit"
+                      class="px-3 py-2 text-sm font-semibold rounded border border-gray-300 bg-white hover:bg-gray-50">
+                Sign in
+              </button>
+              <button id="authEmailSignupBtn" type="button"
+                      class="px-3 py-2 text-sm font-semibold rounded border border-gray-300 bg-white hover:bg-gray-50">
+                Create account
+              </button>
+            </div>
+            <button id="authForgotPasswordBtn" type="button"
+                    class="text-xs text-amber-700 hover:underline">
+              Forgot password?
+            </button>
+            <div id="authPasswordPolicyNote" class="text-[11px] text-gray-500 leading-relaxed">
+              Password policy: minimum 6 characters, including at least 1 uppercase letter and 1 special character.
+            </div>
+          </form>
+
+          <div id="authErrorText" class="mt-3 text-xs text-rose-700"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Optional project-local config (keep these files in your repo/deploy to avoid re-editing index.html) -->
+  <script src="app-config.js"></script>
+  <script src="firebase-config.js"></script>
+  <!-- Firebase (script-tag / compat build for static HTML) -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
 <script>
-  const DATA_URL = "https://script.google.com/macros/s/AKfycbxme0FmUWdOmNG5EVHKxkQkbm0alqCo6vWJgESo8SBzwIQunlTU0f9MdGlEqu2AqkQa/exec";
+  const APP_CONFIG = (window.DOTDOCK_APP_CONFIG && typeof window.DOTDOCK_APP_CONFIG === "object")
+    ? window.DOTDOCK_APP_CONFIG
+    : {};
+  const DATA_URL = String(APP_CONFIG.dataUrl || "").trim();
 
   // Feature flags (safe toggles)
+
+  if (!DATA_URL) {
+    console.error("DOTDOCK_APP_CONFIG.dataUrl is missing.");
+  }
+
   const ENABLE_DEFAULT_FILTER_EXPAND = true;   // Year expanded on load; Category expanded if enabled
   const ENABLE_CATEGORY_FILTER = false;        // Hide Category filter section (requested)
   const ENABLE_SEARCH_SUGGEST = true;          // Google-like suggestions dropdown
@@ -566,6 +637,23 @@
   const WORKSPACE_KEY = "dotdock_workspace_v1";
   const COMPARE_KEY = "dotdock_compare_v1";
   const LIKE_KEY = "dotdock_likes_v1";
+
+  // ===== Firebase start =====
+  // Fill these from your Firebase project settings (or set window.DOTDOCK_FIREBASE_CONFIG before this script).
+  const FIREBASE_CONFIG_BASE = {
+    apiKey: "",
+    authDomain: "",
+    projectId: "",
+    appId: ""
+  };
+  let FIREBASE_CONFIG = { ...FIREBASE_CONFIG_BASE };
+  let fbApp = null;
+  let fbAuth = null;
+  let fbDb = null;
+  // ===== Firebase end =====
+
+
+
 
   // Set these later
   const NEWSLETTER_URL = "";
@@ -630,7 +718,10 @@
     trendsCacheDonut: "",
     trendsCacheConcentration: "—",
     liveUpdatesTimer: null,
-    autoFillGuard: false
+    autoFillGuard: false,
+    catalogLoading: true,
+    authEnabled: false,
+    authUser: null
   };
 
   // --------- Utilities ----------
@@ -652,6 +743,163 @@
     clearTimeout(showToast._to);
     showToast._to = setTimeout(() => t.classList.add("hidden"), 2200);
   }
+
+  window.addEventListener("error", (ev) => {
+    const info = document.getElementById("resultsInfo");
+    if (!info) return;
+    const msg = ev?.message ? String(ev.message) : "Unexpected script error";
+    info.textContent = "Load error: " + msg;
+  });
+  window.addEventListener("unhandledrejection", (ev) => {
+    const info = document.getElementById("resultsInfo");
+    if (!info) return;
+    const reason = ev?.reason;
+    const msg = (reason && reason.message) ? String(reason.message) : String(reason || "Unhandled promise rejection");
+    info.textContent = "Load error: " + msg;
+  });
+
+  // ===== Firebase start =====
+  function hydrateFirebaseConfig_() {
+    const globalCfg = (window && window.DOTDOCK_FIREBASE_CONFIG && typeof window.DOTDOCK_FIREBASE_CONFIG === "object")
+      ? window.DOTDOCK_FIREBASE_CONFIG
+      : {};
+
+    let localCfg = {};
+    try {
+      localCfg = {
+        apiKey: localStorage.getItem("dotdock_fb_apiKey") || "",
+        authDomain: localStorage.getItem("dotdock_fb_authDomain") || "",
+        projectId: localStorage.getItem("dotdock_fb_projectId") || "",
+        appId: localStorage.getItem("dotdock_fb_appId") || ""
+      };
+    } catch (e) {}
+
+    FIREBASE_CONFIG = {
+      ...FIREBASE_CONFIG_BASE,
+      ...FIREBASE_CONFIG,
+      ...localCfg,
+      ...globalCfg
+    };
+
+    try {
+      if (FIREBASE_CONFIG.apiKey) localStorage.setItem("dotdock_fb_apiKey", FIREBASE_CONFIG.apiKey);
+      if (FIREBASE_CONFIG.authDomain) localStorage.setItem("dotdock_fb_authDomain", FIREBASE_CONFIG.authDomain);
+      if (FIREBASE_CONFIG.projectId) localStorage.setItem("dotdock_fb_projectId", FIREBASE_CONFIG.projectId);
+      if (FIREBASE_CONFIG.appId) localStorage.setItem("dotdock_fb_appId", FIREBASE_CONFIG.appId);
+    } catch (e) {}
+  }
+
+  function firebaseReady_() {
+    return !!(window.firebase && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId && FIREBASE_CONFIG.appId);
+  }
+
+  function initFirebase_() {
+    if (!firebaseReady_()) return false;
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    fbApp = firebase.app();
+    fbAuth = firebase.auth();
+    fbDb = firebase.firestore();
+    return true;
+  }
+
+  async function bootstrapUserDoc_(user) {
+    if (!fbDb || !user?.uid) return;
+    const ref = fbDb.collection("users").doc(user.uid);
+    const snap = await ref.get();
+    if (snap.exists) {
+      await ref.set({
+        email: user.email || "",
+        displayName: user.displayName || "",
+        photoURL: user.photoURL || "",
+        lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      return;
+    }
+    await ref.set({
+      uid: user.uid,
+      email: user.email || "",
+      displayName: user.displayName || "",
+      photoURL: user.photoURL || "",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  }
+
+  function setAuthUiState_(user) {
+    const statusEl = document.getElementById("authStatusText");
+    const logoutBtn = document.getElementById("authLogoutBtn");
+    const openBtn = document.getElementById("authOpenModalBtn");
+    const authModal = document.getElementById("authModal");
+    const authErrorText = document.getElementById("authErrorText");
+    if (!statusEl || !logoutBtn || !openBtn) return;
+    if (user) {
+      const label = user.displayName || user.email || "Signed in";
+      statusEl.textContent = `Signed in: ${label}`;
+      statusEl.classList.remove("hidden");
+      logoutBtn.classList.remove("hidden");
+      openBtn.classList.add("hidden");
+      if (authModal) authModal.classList.add("hidden");
+      if (authErrorText) authErrorText.textContent = "";
+      document.body.classList.remove("modal-open");
+    } else {
+      statusEl.textContent = "";
+      statusEl.classList.add("hidden");
+      logoutBtn.classList.add("hidden");
+      openBtn.classList.remove("hidden");
+    }
+  }
+
+  function openAuthModal_() {
+    const modal = document.getElementById("authModal");
+    const err = document.getElementById("authErrorText");
+    if (!modal) return;
+    if (err) err.textContent = "";
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+  }
+
+  function closeAuthModal_() {
+    const modal = document.getElementById("authModal");
+    if (!modal) return;
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
+  }
+
+  function authFriendlyError_(e) {
+    const code = String(e?.code || "");
+    if (code.includes("popup-closed-by-user")) return "Popup closed before sign-in completed.";
+    if (code.includes("popup-blocked")) return "Popup blocked by browser. Please allow popups and try again.";
+    if (code.includes("unauthorized-domain")) return "This domain is not authorized in Firebase Auth settings.";
+    if (code.includes("operation-not-allowed")) return "Provider not enabled in Firebase Authentication settings.";
+    if (code.includes("invalid-credential")) return "Invalid credentials. Please check email/password.";
+    if (code.includes("invalid-email")) return "Please enter a valid email address.";
+    if (code.includes("missing-email")) return "Email is required.";
+    if (code.includes("wrong-password")) return "Incorrect password.";
+    if (code.includes("user-not-found")) return "No account found for this email.";
+    if (code.includes("email-already-in-use")) return "This email is already in use. Try signing in instead.";
+    if (code.includes("weak-password")) return "Password is too weak (minimum 6 characters).";
+    return "Authentication failed. Please try again.";
+  }
+
+  function dedupeAuthUi_() {
+    const dedupeIds = ["authHeaderBox", "authStatusText", "authOpenModalBtn", "authLogoutBtn"];
+    for (const id of dedupeIds) {
+      const nodes = Array.from(document.querySelectorAll(`#${id}`));
+      if (nodes.length <= 1) continue;
+      nodes.slice(1).forEach((n) => n.remove());
+    }
+    const legacyRows = Array.from(document.querySelectorAll("header div.flex.flex-wrap.items-center.justify-end.gap-2.text-\\[11px\\].text-gray-600"));
+    if (legacyRows.length > 1) legacyRows.slice(1).forEach((n) => n.remove());
+    document.querySelectorAll("header span").forEach((el) => {
+      if (el.id === "authStatusText") return;
+      if (String(el.textContent || "").trim().toLowerCase() === "signed out") {
+        el.remove();
+      }
+    });
+  }
+  // ===== Firebase end =====
 
   function normalizeText(s) {
     const str = String(s ?? "");
@@ -707,11 +955,6 @@
 
   function reportPageUrl(fileId, title) {
     const base = `report.html?id=${encodeURIComponent(fileId)}`;
-    return title ? `${base}&t=${encodeURIComponent(title)}` : base;
-  }
-
-  function viewPageUrl(fileId, title) {
-    const base = `report.html?id=${encodeURIComponent(fileId)}&view=1`;
     return title ? `${base}&t=${encodeURIComponent(title)}` : base;
   }
 
@@ -798,9 +1041,6 @@
     const prev = ws[key] || {};
     ws[key] = { ...prev, ...patch, updatedAt: Date.now() };
     workspaceSet(ws);
-  }
-  function wsPinned(id) {
-    return !!wsItem(id).pinned;
   }
   function wsStatus(id) {
     return (wsItem(id).status || "").toLowerCase();
@@ -1291,6 +1531,9 @@ Output:
   }
 
   async function loadData(forceFresh) {
+    if (!DATA_URL) {
+      throw new Error("Catalog URL not configured. Set DOTDOCK_APP_CONFIG.dataUrl in app-config.js.");
+    }
     if (!forceFresh) {
       const cached = cacheGet();
       if (cached) return cached;
@@ -1696,10 +1939,6 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
     }
 
     state.filteredItems.sort((a,b) => {
-      const ap = wsPinned(a.id) ? 1 : 0;
-      const bp = wsPinned(b.id) ? 1 : 0;
-      if (ap !== bp) return bp - ap;
-
       if (!overrideOn && q) {
         const as = state.scoreById.get(String(a.id)) || 0;
         const bs = state.scoreById.get(String(b.id)) || 0;
@@ -1747,7 +1986,7 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
       const ago = formatAgoWords(ts);
       const url = reportPageUrl(item.id, item.title || "");
       return `
-        <a href="${url}" class="group block rounded-md px-1 py-1 hover:bg-rose-50 transition">
+        <a href="${url}" data-live-open="1" data-id="${escapeHtml(item.id)}" class="group block rounded-md px-1 py-1 hover:bg-rose-50 transition">
           <div class="flex items-start gap-2">
             <span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full border border-rose-500 bg-white"></span>
             <div class="min-w-0">
@@ -1925,7 +2164,6 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
       .map(c => `<span class="px-2 py-0.5 border rounded-full bg-gray-50">${escapeHtml(c)}</span>`)
       .join("");
 
-    const pinned = wsPinned(item.id);
     const status = wsStatus(item.id);
     const statusLabel = status ? status.charAt(0).toUpperCase() + status.slice(1) : "Unread";
 
@@ -1936,15 +2174,25 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
 
     const addLabel = isInReadingList(item.id) ? "Remove from reading list" : "Add to reading list";
     const compareLabel = isCompared(item.id) ? "Compared" : "Compare";
-    const pinLabel = pinned ? "Unpin" : "Pin";
 
     const liked = isLiked(item.id);
     const likes = likeCount(item.id);
     const likeTitle = ENABLE_REMOTE_LIKES ? "Like" : "Like (saved in your browser)";
     const isNew = !!(state.newIds && state.newIds.has(String(item.id)));
+    const authLocked = !state.authUser;
 
     return `
-      <article data-card-id="${escapeHtml(item.id)}" data-new="${isNew ? "1" : "0"}" class="bg-white border ${isNew ? "border-red-200 ring-2 ring-red-100" : "border-gray-200"} rounded-lg p-4 shadow-sm hover:shadow transition">
+      <article data-card-id="${escapeHtml(item.id)}" data-new="${isNew ? "1" : "0"}" class="relative overflow-hidden bg-white border ${isNew ? "border-red-200 ring-2 ring-red-100" : "border-gray-200"} rounded-lg p-4 shadow-sm hover:shadow transition">
+        ${authLocked ? `<div class="absolute inset-0 z-20 bg-white/65 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div class="text-center max-w-xs">
+            <div class="text-sm font-semibold text-gray-800">Please sign in to view full report cards.</div>
+            <button type="button" data-action="auth_open" data-id="${escapeHtml(item.id)}"
+                    class="mt-2 px-3 py-1.5 text-xs font-semibold border border-gray-300 rounded bg-white hover:bg-gray-50">
+              Sign in to continue
+            </button>
+          </div>
+        </div>` : ""}
+        <div class="${authLocked ? "blur-[2px] select-none" : ""}">
         <div class="grid grid-cols-1 sm:grid-cols-[160px,1fr] gap-4">
           <div class="w-full">
             <div class="relative border border-gray-200 bg-white rounded group">
@@ -1965,9 +2213,6 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
               ${addedTs ? `<span class="text-gray-300">•</span><span>${escapeHtml(addedLabel)}</span>` : ``}
               ${updatedTs ? `<span class="text-gray-300">•</span><span>${escapeHtml(updatedLabel)}</span>` : ``}
               ${isNew ? `<span class="ml-2 px-2 py-0.5 rounded-full border border-red-200 bg-red-50 text-red-700 text-[10px] font-bold tracking-wide">NEW</span>` : ``}
-              ${pinned ? `<span class="text-amber-600 flex items-center gap-1 shrink-0 ml-auto" title="Pinned">
-                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2l-1 1v5.2l4.6 4.6-1.4 1.4L11 9.6V3l-1-1h4zM5 14l5 5v3H8v-2.2L3.4 15.4 5 14z"/></svg>
-                <span class="text-xs font-semibold">Pinned</span></span>` : ""}
             </div>
 
             <a href="${reportPageUrl(item.id, item.title || "") }"
@@ -1998,18 +2243,6 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
                 AI summary
               </button>
 
-              <button data-action="pin" data-id="${escapeHtml(item.id)}"
-                 class="px-3 py-1.5 text-xs border border-gray-300 rounded bg-white hover:bg-gray-50">
-                <span class="inline-flex items-center gap-1">
-                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2l-1 1v5.2l4.6 4.6-1.4 1.4L11 9.6V3l-1-1h4zM5 14l5 5v3H8v-2.2L3.4 15.4 5 14z"/></svg>
-                  <span>${escapeHtml(pinLabel)}</span>
-                </span>
-              </button>
-
-              <a href="${viewPageUrl(item.id, item.title || "")}" target="_blank" rel="noopener"
-                 class="px-3 py-1.5 text-xs font-semibold bg-amber-600 text-white rounded hover:bg-amber-700">
-                View
-              </a>
             </div>
           </div>
         </div>
@@ -2061,6 +2294,7 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
             </div>
           </div>
         </div>
+        </div>
 
       </article>
     `;
@@ -2092,6 +2326,13 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
   function render() {
     const container = document.getElementById("cardsContainer");
     const info = document.getElementById("resultsInfo");
+    if (!container || !info) return;
+
+    if (state.catalogLoading) {
+      renderCardSkeletons(state.pageSize);
+      info.textContent = "Loading publications…";
+      return;
+    }
 
     const total = state.filteredItems.length;
     const maxShown = state.page * state.pageSize;
@@ -2152,11 +2393,9 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
     const modal = document.getElementById("pdfModal");
     const frame = document.getElementById("pdfModalFrame");
     const title = document.getElementById("pdfModalTitle");
-    const viewBtn = document.getElementById("pdfModalView");
 
     title.textContent = item.title || "Report";
     frame.src = drivePreviewUrl(item.id);
-    viewBtn.href = viewPageUrl(item.id, item.title || "");
 
     modal.classList.remove("hidden");
     document.body.style.overflow = "hidden";
@@ -2216,33 +2455,54 @@ function openPdfModalById(id) {
     if (item) openPdfModal(item);
   }
 
-  // --------- Reading list UI ----------
+  // --------- Reading list dock UI ----------
   function renderReadingList() {
+    const rail = document.getElementById("readingListRail");
+    const section = document.getElementById("readingListDock");
     const wrap = document.getElementById("readingListWrap");
     const empty = document.getElementById("readingListEmpty");
-    const ids = readingGet();
+    const countEl = document.getElementById("readingListCount");
+    const toggleBtn = document.getElementById("toggleReadingList");
+    if (!rail || !section || !wrap || !empty || !countEl || !toggleBtn) return;
 
-    if (ids.length === 0) {
+    const ids = readingGet();
+    const total = ids.length;
+    countEl.textContent = String(total);
+
+    const isOpen = !wrap.classList.contains("hidden");
+    if (total === 0) {
+      section.classList.add("hidden");
       empty.classList.remove("hidden");
       wrap.classList.add("hidden");
       wrap.innerHTML = "";
+      toggleBtn.textContent = "Show";
       return;
     }
 
+    section.classList.remove("hidden");
     empty.classList.add("hidden");
-    wrap.classList.remove("hidden");
+    if (!isOpen) {
+      wrap.classList.remove("hidden");
+      toggleBtn.textContent = "Hide";
+    }
 
     const itemsById = new Map(state.allItems.map(it => [String(it.id), it]));
     wrap.innerHTML = ids.map(id => {
       const it = itemsById.get(String(id));
       if (!it) return "";
+      const thumb = escapeHtml(it.thumbUrl || "https://via.placeholder.com/96x132?text=PDF");
       return `
-        <div class="border border-gray-200 rounded p-2 bg-gray-50">
-          <div class="text-sm font-semibold text-gray-800 truncate">${escapeHtml(it.title || "Untitled")}</div>
-          <div class="mt-2 flex flex-wrap gap-2">
-            <a href="${reportPageUrl(it.id, it.title || "")}" class="px-2 py-1 text-xs border rounded bg-white hover:bg-gray-50">Open</a>
-            <button data-action="modal" data-id="${escapeHtml(it.id)}" class="px-2 py-1 text-xs border rounded bg-white hover:bg-gray-50">Preview</button>
-            <button data-action="reading" data-id="${escapeHtml(it.id)}" class="px-2 py-1 text-xs border rounded bg-white hover:bg-gray-50">Remove</button>
+        <div class="border border-gray-200 rounded-lg p-2 bg-white">
+          <div class="flex gap-2">
+            <a href="${reportPageUrl(it.id, it.title || "")}" class="shrink-0" aria-label="Open report">
+              <img src="${thumb}" alt="${escapeHtml(it.title || "Untitled")}" class="w-14 h-20 object-cover rounded border border-gray-200 bg-gray-50">
+            </a>
+            <div class="min-w-0 flex-1">
+              <a href="${reportPageUrl(it.id, it.title || "")}" class="text-sm font-semibold text-amber-700 hover:underline line-clamp-2">${escapeHtml(it.title || "Untitled")}</a>
+              <div class="mt-2 flex items-center gap-2">
+                <button data-action="reading" data-id="${escapeHtml(it.id)}" class="px-2 py-1 text-xs border rounded bg-white hover:bg-gray-50">Remove</button>
+              </div>
+            </div>
           </div>
         </div>
       `;
@@ -2406,8 +2666,7 @@ function openPdfModalById(id) {
         <div class="space-y-3">
           <p class="text-gray-600">Add your glossary terms here (later we can make it its own page).</p>
           <ul class="list-disc ml-5 text-gray-700">
-            <li><span class="font-semibold">Pinned</span>: Shows at the top of the catalog (local).</li>
-            <li><span class="font-semibold">Reading list</span>: Save items locally to revisit.</li>
+            <li><span class="font-semibold">Reading list</span>: Quick local basket for reports you want to open.</li>
             <li><span class="font-semibold">Topics</span>: Auto keywords extracted from titles.</li>
           </ul>
         </div>
@@ -2723,8 +2982,186 @@ function setupNewPostsBtn_() {
 
 
   
+  /**
+   * ===== Auth helpers =====
+   * Keep auth/redirect logic isolated and project-path safe (GitHub Pages).
+   */
+  function safeReturnFromAuth_() {
+    const p = new URLSearchParams(location.search);
+    const next = p.get("next");
+    if (!next) return false;
+
+    let decoded = "";
+    try { decoded = decodeURIComponent(next); } catch (e) { decoded = String(next); }
+    if (!decoded) return false;
+
+    const baseDir = location.pathname.replace(/[^/]*$/, "");
+    const target = new URL(decoded, location.origin + baseDir);
+    if (target.origin !== location.origin) return false;
+
+    location.href = target.toString();
+    return true;
+  }
+
+
   // --------- DOM events ----------
   document.addEventListener("DOMContentLoaded", async () => {
+    // ===== Firebase start =====
+    dedupeAuthUi_();
+    const authOpenModalBtn = document.getElementById("authOpenModalBtn");
+    const authGoogleBtn = document.getElementById("authGoogleBtn");
+    const authLogoutBtn = document.getElementById("authLogoutBtn");
+    const authEmailForm = document.getElementById("authEmailForm");
+    const authEmailInput = document.getElementById("authEmailInput");
+    const authPasswordInput = document.getElementById("authPasswordInput");
+    const authEmailSignupBtn = document.getElementById("authEmailSignupBtn");
+    const authForgotPasswordBtn = document.getElementById("authForgotPasswordBtn");
+    const authModalBackdrop = document.getElementById("authModalBackdrop");
+    const authModalClose = document.getElementById("authModalClose");
+    const authErrorText = document.getElementById("authErrorText");
+
+    if (authOpenModalBtn) authOpenModalBtn.addEventListener("click", openAuthModal_);
+    if (authModalBackdrop) authModalBackdrop.addEventListener("click", closeAuthModal_);
+    if (authModalClose) authModalClose.addEventListener("click", closeAuthModal_);
+    {
+      const p = new URLSearchParams(location.search);
+      if (p.get("auth") === "1") openAuthModal_();
+    }
+
+    hydrateFirebaseConfig_();
+    const firebaseEnabled = initFirebase_();
+    state.authEnabled = !!firebaseEnabled;
+    if (!firebaseEnabled) {
+      state.authUser = null;
+      setAuthUiState_(null);
+      if (authOpenModalBtn) authOpenModalBtn.title = "Set Firebase config values to enable sign-in.";
+      if (authErrorText) authErrorText.textContent = "Sign-in is not configured yet. Add Firebase config first.";
+    } else {
+      fbAuth.onAuthStateChanged(async (user) => {
+        state.authUser = user || null;
+        setAuthUiState_(user || null);
+        render();
+        if (user && safeReturnFromAuth_()) return;
+        if (user) {
+          try { await bootstrapUserDoc_(user); }
+          catch (e) { console.warn("User bootstrap failed:", e); }
+        }
+      });
+    }
+
+    if (authGoogleBtn) {
+      authGoogleBtn.addEventListener("click", async () => {
+        if (!fbAuth) {
+          if (authErrorText) authErrorText.textContent = "Firebase Auth is not configured yet.";
+          showToast("Set Firebase config to enable sign-in.");
+          return;
+        }
+        try {
+          await fbAuth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+          closeAuthModal_();
+        } catch (e) {
+          const msg = authFriendlyError_(e);
+          if (authErrorText) authErrorText.textContent = msg;
+          showToast(msg);
+          if (String(e?.code || "").includes("popup-blocked")) {
+            try {
+              await fbAuth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+            } catch (err2) {}
+          }
+        }
+      });
+    }
+
+    if (authEmailForm) {
+      authEmailForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!fbAuth) {
+          if (authErrorText) authErrorText.textContent = "Firebase Auth is not configured yet.";
+          showToast("Set Firebase config to enable sign-in.");
+          return;
+        }
+        const email = String(authEmailInput?.value || "").trim();
+        const password = String(authPasswordInput?.value || "");
+        if (!email || !password) {
+          if (authErrorText) authErrorText.textContent = "Enter email and password.";
+          return;
+        }
+        try {
+          await fbAuth.signInWithEmailAndPassword(email, password);
+          if (authErrorText) authErrorText.textContent = "";
+          closeAuthModal_();
+          showToast("Signed in.");
+        } catch (err) {
+          const msg = authFriendlyError_(err);
+          if (authErrorText) authErrorText.textContent = msg;
+          showToast(msg);
+        }
+      });
+    }
+
+    if (authEmailSignupBtn) {
+      authEmailSignupBtn.addEventListener("click", async () => {
+        if (!fbAuth) {
+          if (authErrorText) authErrorText.textContent = "Firebase Auth is not configured yet.";
+          showToast("Set Firebase config to enable sign-in.");
+          return;
+        }
+        const email = String(authEmailInput?.value || "").trim();
+        const password = String(authPasswordInput?.value || "");
+        if (!email || !password) {
+          if (authErrorText) authErrorText.textContent = "Enter email and password.";
+          return;
+        }
+        try {
+          await fbAuth.createUserWithEmailAndPassword(email, password);
+          if (authErrorText) authErrorText.textContent = "";
+          closeAuthModal_();
+          showToast("Account created.");
+        } catch (e) {
+          const msg = authFriendlyError_(e);
+          if (authErrorText) authErrorText.textContent = msg;
+          showToast(msg);
+        }
+      });
+    }
+
+    if (authForgotPasswordBtn) {
+      authForgotPasswordBtn.addEventListener("click", async () => {
+        if (!fbAuth) {
+          if (authErrorText) authErrorText.textContent = "Firebase Auth is not configured yet.";
+          showToast("Set Firebase config to enable password reset.");
+          return;
+        }
+        const email = String(authEmailInput?.value || "").trim();
+        if (!email) {
+          if (authErrorText) authErrorText.textContent = "Enter your email first, then click Forgot password.";
+          return;
+        }
+        try {
+          await fbAuth.sendPasswordResetEmail(email);
+          if (authErrorText) authErrorText.textContent = "";
+          showToast("Password reset email sent.");
+        } catch (e) {
+          const msg = authFriendlyError_(e);
+          if (authErrorText) authErrorText.textContent = msg;
+          showToast(msg);
+        }
+      });
+    }
+
+    if (authLogoutBtn) {
+      authLogoutBtn.addEventListener("click", async () => {
+        if (!fbAuth) return;
+        try {
+          await fbAuth.signOut();
+          showToast("Signed out.");
+        } catch (e) {
+          showToast("Logout failed.");
+        }
+      });
+    }
+    // ===== Firebase end =====
+
     const searchInput = document.getElementById("searchInput");
     const searchBtn = document.getElementById("searchBtn");
     const searchClearBtn = document.getElementById("searchClearBtn");
@@ -2870,12 +3307,14 @@ function setupNewPostsBtn_() {
     const sortSelect = document.getElementById("sortSelect");
     const newsletterBtn = document.getElementById("newsletterBtn");
     const trendsList = document.getElementById("trendsList");
+    const liveUpdatesListEl = document.getElementById("liveUpdatesList");
     const trendsRangeToday = document.getElementById("trendsRangeToday");
     const trendsRange7d = document.getElementById("trendsRange7d");
     const navHome = document.getElementById("navHome");
     const navToday = document.getElementById("navToday");
 
     setTabFromUrl();
+
 
     function switchTab_(tab) {
       state.tab = (tab === "today") ? "today" : "home";
@@ -2902,6 +3341,16 @@ function setupNewPostsBtn_() {
         state.searchQuery = topic;
         searchInput.value = topic;
         doSearch({ remember: true, closeSuggest: true });
+      });
+    }
+    if (liveUpdatesListEl) {
+      liveUpdatesListEl.addEventListener("click", (e) => {
+        const link = e.target.closest("[data-live-open='1']");
+        if (!link) return;
+        if (state.authUser) return;
+        e.preventDefault();
+        openAuthModal_();
+        showToast("Please sign in to open report details.");
       });
     }
     if (trendsRangeToday) trendsRangeToday.addEventListener("click", () => {
@@ -3043,12 +3492,12 @@ document.addEventListener("visibilitychange", () => {
       setToggleState(toggleYears, document.getElementById("yearFilters"), true);
     }
 
-    sortSelect.addEventListener("change", () => {
+    if (sortSelect) sortSelect.addEventListener("change", () => {
       state.sortMode = sortSelect.value || "newest";
       applyFilters(true);
     });
 
-    newsletterBtn.addEventListener("click", () => {
+    if (newsletterBtn) newsletterBtn.addEventListener("click", () => {
       if (!NEWSLETTER_URL) {
         showToast("Newsletter link not set yet.");
         return;
@@ -3412,13 +3861,8 @@ document.addEventListener("visibilitychange", () => {
     toggleReading.addEventListener("click", () => {
       const wrap = document.getElementById("readingListWrap");
       const isHidden = wrap.classList.contains("hidden");
-      if (isHidden) {
-        wrap.classList.remove("hidden");
-        toggleReading.textContent = "Hide";
-      } else {
-        wrap.classList.add("hidden");
-        toggleReading.textContent = "Show";
-      }
+      wrap.classList.toggle("hidden", !isHidden);
+      toggleReading.textContent = isHidden ? "Hide" : "Show";
     });
     clearReading.addEventListener("click", () => {
       readingSet([]);
@@ -3426,17 +3870,17 @@ document.addEventListener("visibilitychange", () => {
       render();
     });
 
-    wsStatusFilter.addEventListener("change", () => {
+    if (wsStatusFilter) wsStatusFilter.addEventListener("change", () => {
       state.wsStatusFilter = wsStatusFilter.value;
       applyFilters();
     });
-    wsTagFilter.addEventListener("input", () => {
+    if (wsTagFilter) wsTagFilter.addEventListener("input", () => {
       state.wsTagFilter = wsTagFilter.value;
       applyFilters();
     });
-    exportWsBtn.addEventListener("click", exportWorkspace);
+    if (exportWsBtn) exportWsBtn.addEventListener("click", exportWorkspace);
 
-    clearCompareBtn.addEventListener("click", () => {
+    if (clearCompareBtn) clearCompareBtn.addEventListener("click", () => {
       compareSet([]);
       renderCompare();
       render();
@@ -3664,19 +4108,22 @@ document.addEventListener("visibilitychange", () => {
       const action = btn.getAttribute("data-action");
       const id = btn.getAttribute("data-id");
       if (!id) return;
+      const authLocked = !state.authUser;
+
+      if (action === "auth_open") {
+        openAuthModal_();
+        return;
+      }
+      if (authLocked) {
+        openAuthModal_();
+        return;
+      }
 
       const item = state.allItems.find(x => String(x.id) === String(id));
 
       if (action === "modal") openPdfModalById(id);
       if (action === "reading") toggleReadingItem(id);
       if (action === "compare") toggleCompare(id);
-
-      if (action === "pin") {
-        const pinned = wsPinned(id);
-        wsSetItem(id, { pinned: !pinned });
-        renderCompare();
-        applyFilters();
-      }
 
       if (action === "notebooklm" && item) openInNotebookLM(item);
       if (action === "aisummary" && item) openSummaryModal(item);
@@ -3755,7 +4202,8 @@ document.addEventListener("visibilitychange", () => {
 
     });
 
-    document.getElementById("readingListWrap").addEventListener("click", (e) => {
+    const readingListWrap = document.getElementById("readingListWrap");
+    if (readingListWrap) readingListWrap.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-action]");
       if (!btn) return;
       const action = btn.getAttribute("data-action");
@@ -3766,7 +4214,8 @@ document.addEventListener("visibilitychange", () => {
       if (action === "compare") toggleCompare(id);
     });
 
-    document.getElementById("compareWrap").addEventListener("click", (e) => {
+    const compareWrap = document.getElementById("compareWrap");
+    if (compareWrap) compareWrap.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-action='compare']");
       if (!btn) return;
       const id = btn.getAttribute("data-id");
@@ -3784,6 +4233,7 @@ document.addEventListener("visibilitychange", () => {
     const cached = allowCachedFirst ? cacheGet() : null;
     if (cached) {
       state.allItems = prepareItems(cached);
+      state.catalogLoading = false;
       buildFacetFilters();
       refreshSearchSuggestData();
 
@@ -3809,6 +4259,7 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
           : "Showing cached snapshot while syncing latest…";
     } else {
       // Keep header pill visible while first load runs
+      state.catalogLoading = true;
       setLiveHeaderStatus({ updatedAt: 0, newCount: 0 });
       renderCardSkeletons(state.pageSize);
       document.getElementById("resultsInfo").textContent = "Loading publications…";
@@ -3821,6 +4272,7 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
     try {
       const data = prepareItems(await loadData(false));
       state.allItems = data;
+      state.catalogLoading = false;
       cacheSet(data);
       buildFacetFilters();
       refreshSearchSuggestData();
@@ -3847,6 +4299,7 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
           try {
             const retry = prepareItems(await loadData(true));
             state.allItems = retry;
+            state.catalogLoading = false;
             cacheSet(retry);
             buildFacetFilters();
             refreshSearchSuggestData();
@@ -3861,6 +4314,7 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
             infoEl.textContent = "Still loading from server… please wait.";
           }
         } else {
+          state.catalogLoading = false;
           infoEl.textContent = "Error loading data: " + e.message;
         }
       }
@@ -3888,7 +4342,7 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
       }
     }, 15000);
 
-    sortSelect.value = state.sortMode;
+    if (sortSelect) sortSelect.value = state.sortMode;
 
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {

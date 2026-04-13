@@ -9,33 +9,54 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="app-config.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 
   <style>
     body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif; }
     .brand-title { font-family: 'Playfair Display', serif; letter-spacing: 0.03em; }
     .brand-tagline { font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; }
+    /* Temporary UI mask to block Drive pop-out hotspot in embedded preview */
+    .pdf-popout-mask {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.5rem;
+      width: 72px;
+      height: 52px;
+      background: #111827;
+      border-radius: 6px;
+      z-index: 15;
+    }
   </style>
 </head>
 
 <body class="bg-gray-50">
   <!-- Header -->
   <header class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-4 py-4">
-      <div class="flex items-center gap-4">
-        <a href="index.html" class="block" aria-label="Back to catalog">
+    <div class="max-w-[1600px] mx-auto px-4 py-4">
+      <div class="flex items-center justify-between gap-4">
+        <a href="index.html" class="block shrink-0" aria-label="Back to catalog">
           <img src="logo.png" alt="dotdock logo"
                class="h-12 w-12 md:h-16 md:w-16 rounded-full object-cover shadow-md border border-gray-200 bg-white">
         </a>
-        <div>
-          <h1 class="brand-title text-2xl md:text-3xl font-semibold text-gray-900">dotdock</h1>
-          <p class="brand-tagline text-amber-600 mt-1">Where report insights come together.</p>
+        <div class="min-w-0 flex-1">
+          <h1 class="text-2xl md:text-4xl font-semibold text-gray-900 tracking-tight leading-none">dotdock</h1>
+          <p class="brand-tagline mt-2 text-amber-600 text-sm md:text-base font-semibold italic tracking-[0.02em]">
+            Connecting the dots for curious minds
+          </p>
           <p class="text-xs text-gray-500 mt-1 tracking-[0.14em] uppercase">Report</p>
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+          <span id="reportAuthState" class="hidden px-2 py-1 rounded-full border border-gray-200 bg-white text-gray-600"></span>
+          <button id="reportSignOutBtn" class="px-3 py-1.5 border border-gray-300 rounded bg-white hover:bg-gray-50">Logout</button>
         </div>
       </div>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-4 py-6">
+  <main class="max-w-[1600px] mx-auto px-4 py-6">
     <!-- Top row -->
     <div id="topRow" class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
       <div>
@@ -56,7 +77,7 @@
         </button>
 
         <a id="shareX" target="_blank" rel="noopener"
-           class="inline-flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-amber-500/40">
+           class="inline-flex items-center gap-2 px-3 py-2 text-sm border border-slate-800 rounded bg-slate-900 text-white hover:bg-black focus:outline-none focus:ring-2 focus:ring-slate-400/40">
           <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 4L20 20"></path>
@@ -66,7 +87,7 @@
         </a>
 
         <a id="shareLI" target="_blank" rel="noopener"
-           class="inline-flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-amber-500/40">
+           class="inline-flex items-center gap-2 px-3 py-2 text-sm border border-blue-700 rounded bg-[#0A66C2] text-white hover:bg-[#004182] focus:outline-none focus:ring-2 focus:ring-blue-500/40">
           <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2"></rect>
@@ -79,7 +100,7 @@
         </a>
 
         <a id="shareFB" target="_blank" rel="noopener"
-           class="inline-flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-amber-500/40">
+           class="inline-flex items-center gap-2 px-3 py-2 text-sm border border-blue-700 rounded bg-[#1877F2] text-white hover:bg-[#145dbf] focus:outline-none focus:ring-2 focus:ring-blue-500/40">
           <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
@@ -88,7 +109,7 @@
         </a>
 
         <a id="shareWA" target="_blank" rel="noopener"
-           class="inline-flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-amber-500/40">
+           class="inline-flex items-center gap-2 px-3 py-2 text-sm border border-green-700 rounded bg-[#25D366] text-white hover:bg-[#1da851] focus:outline-none focus:ring-2 focus:ring-green-500/40">
           <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 11.5a8.5 8.5 0 1 1-15.2 5.3L3 21l4.2-1.8A8.5 8.5 0 0 1 21 11.5z"></path>
@@ -98,7 +119,7 @@
         </a>
 
         <a id="shareEmail"
-           class="inline-flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-amber-500/40">
+           class="inline-flex items-center gap-2 px-3 py-2 text-sm border border-rose-700 rounded bg-rose-600 text-white hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500/40">
           <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"></path>
@@ -140,11 +161,6 @@
               </table>
 
               <div class="mt-3 flex flex-wrap gap-2">
-                <a id="viewBtn" target="_blank" rel="noopener"
-                   class="inline-flex items-center px-4 py-2 text-sm font-semibold bg-amber-600 text-white rounded hover:bg-amber-700">
-                  View PDF (new tab)
-                </a>
-
                 <button id="addReadingBtn"
                         class="px-3 py-2 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50">
                   Add to reading list
@@ -161,7 +177,6 @@
                 </button>
               </div>
 
-              <div id="statusLine" class="text-xs text-gray-500 mt-2"></div>
               <div id="compareHint" class="hidden text-xs text-amber-700 mt-2"></div>
             </div>
           </div>
@@ -203,12 +218,6 @@
                     class="mt-1 w-full border border-gray-300 rounded px-2 py-1 text-sm"
                     placeholder="Your notes for this report…"></textarea>
 
-          <div class="mt-3 flex gap-2">
-            <button id="pinBtn"
-                    class="px-3 py-2 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50">
-              Pin
-            </button>
-          </div>
 
           <div class="text-[11px] text-gray-500 mt-2">
             Saved locally in your browser (no login).
@@ -224,12 +233,15 @@
             <a href="index.html" class="text-sm text-amber-700 hover:underline">Back to catalog</a>
           </div>
 
-          <iframe id="pdfFrame"
-                  class="w-full"
-                  style="height: 75vh;"
-                  title="PDF viewer"
-                  src=""
-                  loading="lazy"></iframe>
+          <div class="relative">
+            <iframe id="pdfFrame"
+                    class="w-full"
+                    style="height: 75vh;"
+                    title="PDF viewer"
+                    src=""
+                    loading="lazy"></iframe>
+            <div class="pdf-popout-mask" aria-hidden="true" title="Preview toolbar masked"></div>
+          </div>
         </div>
       </section>
     </div>
@@ -269,7 +281,57 @@
   <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-gray-900 text-white text-sm px-4 py-2 rounded shadow-lg"></div>
 
 <script>
-  const DATA_URL = "https://script.google.com/macros/s/AKfycbxme0FmUWdOmNG5EVHKxkQkbm0alqCo6vWJgESo8SBzwIQunlTU0f9MdGlEqu2AqkQa/exec";
+  function firebaseCfg_() {
+    const cfg = (window.DOTDOCK_FIREBASE_CONFIG && typeof window.DOTDOCK_FIREBASE_CONFIG === "object")
+      ? window.DOTDOCK_FIREBASE_CONFIG
+      : {};
+    return cfg;
+  }
+
+  // ===== Auth-specific route guard =====
+  function authEntryUrl_() {
+    return new URL("index.html", location.href);
+  }
+
+  async function guardRouteAuth_() {
+    const cfg = firebaseCfg_();
+    const ready = !!(window.firebase && cfg.apiKey && cfg.projectId && cfg.appId);
+    if (!ready) {
+      document.body.innerHTML = "<div class='p-6 text-red-700'>Sign-in required, but Firebase is not configured.</div>";
+      return false;
+    }
+    if (!firebase.apps.length) firebase.initializeApp(cfg);
+    return await new Promise((resolve) => {
+      firebase.auth().onAuthStateChanged((user) => {
+        if (user) {
+          const stateEl = document.getElementById("reportAuthState");
+          const signOutBtn = document.getElementById("reportSignOutBtn");
+          if (stateEl) {
+            stateEl.classList.remove("hidden");
+            stateEl.textContent = `Signed in: ${user.displayName || user.email || "User"}`;
+          }
+          if (signOutBtn) {
+            signOutBtn.onclick = async () => {
+              await firebase.auth().signOut();
+              location.href = authEntryUrl_().toString();
+            };
+          }
+          return resolve(true);
+        }
+        const next = encodeURIComponent(location.pathname + location.search + location.hash);
+        const entry = authEntryUrl_();
+        entry.searchParams.set("auth", "1");
+        entry.searchParams.set("next", next);
+        location.href = entry.toString();
+        resolve(false);
+      });
+    });
+  }
+
+  const APP_CONFIG = (window.DOTDOCK_APP_CONFIG && typeof window.DOTDOCK_APP_CONFIG === "object")
+    ? window.DOTDOCK_APP_CONFIG
+    : {};
+  const DATA_URL = String(APP_CONFIG.dataUrl || "").trim();
 
   const CACHE_KEY = "pdf_catalog_cache_v2";
   const CACHE_TTL_MS = 12 * 60 * 60 * 1000;
@@ -354,11 +416,6 @@
 
   function driveShareUrl(fileId) {
     return `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/view?usp=sharing`;
-  }
-
-  function viewUrl(fileId, title) {
-    const base = `report.html?id=${encodeURIComponent(fileId)}&view=1`;
-    return title ? `${base}&t=${encodeURIComponent(title)}` : base;
   }
 
   function reportUrl(fileId, title) {
@@ -496,7 +553,6 @@
 
     // Reader
     document.getElementById("pdfFrame").src = drivePreviewUrl(item.id);
-    document.getElementById("viewBtn").href = viewUrl(item.id, item.title || "");
 
     setMetaTable(item);
 
@@ -512,7 +568,6 @@
     document.getElementById("wsStatus").value = (ws.status || "unread").toLowerCase();
     document.getElementById("wsTags").value = Array.isArray(ws.tags) ? ws.tags.join(", ") : "";
     document.getElementById("wsNotes").value = ws.notes || "";
-    document.getElementById("pinBtn").textContent = ws.pinned ? "Unpin" : "Pin";
 
     // Compare state
     const compared = compareGet().includes(String(item.id));
@@ -520,6 +575,7 @@
   }
 
   async function fetchCatalogFresh() {
+    if (!DATA_URL) throw new Error("Catalog URL not configured. Set DOTDOCK_APP_CONFIG.dataUrl in app-config.js.");
     const url = DATA_URL + (DATA_URL.includes("?") ? "&" : "?") + "cb=" + Date.now();
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) throw new Error("Failed to load catalog (" + res.status + ")");
@@ -599,7 +655,6 @@
               <button class="px-2 py-1 text-xs border rounded bg-white hover:bg-gray-50" data-action="save" data-id="${esc(it.id)}">
                 ${inList ? "Saved" : "Save"}
               </button>
-              <a class="px-2 py-1 text-xs border rounded bg-white hover:bg-gray-50" target="_blank" rel="noopener" href="${viewUrl(it.id, it.title || "")}">View</a>
             </div>
           </div>
         </div>
@@ -627,7 +682,7 @@
     }
   }
 
-  (async function init() {
+  async function initReport_() {
     const params = new URLSearchParams(window.location.search);
     const id = params.get("id");
     const titleHint = params.get("t") || "";
@@ -641,7 +696,6 @@
 
     // Always show reader immediately
     document.getElementById("pdfFrame").src = drivePreviewUrl(id);
-    document.getElementById("viewBtn").href = viewUrl(id, titleHint);
 
     // Title hint (instant)
     if (titleHint) {
@@ -705,7 +759,6 @@
     const wsStatus = document.getElementById("wsStatus");
     const wsTags = document.getElementById("wsTags");
     const wsNotes = document.getElementById("wsNotes");
-    const pinBtn = document.getElementById("pinBtn");
     const exportBtn = document.getElementById("exportWsBtn");
 
     function saveWorkspace() {
@@ -721,14 +774,6 @@
     wsTags.addEventListener("input", () => { saveWorkspace(); });
     wsNotes.addEventListener("input", () => { saveWorkspace(); });
 
-    pinBtn.addEventListener("click", () => {
-      const cur = wsItem(id);
-      const pinned = !!cur.pinned;
-      wsSetItem(id, { pinned: !pinned });
-      pinBtn.textContent = !pinned ? "Unpin" : "Pin";
-      showToast(!pinned ? "Pinned (shows at top of catalog)." : "Unpinned.");
-    });
-
     exportBtn.addEventListener("click", exportWorkspace);
 
     // Render from cache fast
@@ -741,7 +786,6 @@
         baseItem = cachedItem;
         renderItem(cachedItem);
         renderedFromCache = true;
-        document.getElementById("statusLine").textContent = "Loaded from cache… updating";
         renderRecommendations(cachedItem, cached);
       }
     }
@@ -751,25 +795,20 @@
       const data = await fetchCatalogFresh();
       const item = data.find(x => String(x.id) === String(id));
       if (!item) {
-        document.getElementById("statusLine").textContent = "Not in catalog yet — showing reader only.";
         document.getElementById("recoWrap").textContent = "No recommendations available.";
         return;
       }
       baseItem = item;
       renderItem(item);
-      document.getElementById("statusLine").textContent = "Updated";
       renderRecommendations(item, data);
     } catch (e) {
       console.warn("Catalog fetch failed:", e);
-      document.getElementById("statusLine").textContent = renderedFromCache
-        ? "Loaded from cache (update unavailable)."
-        : "Catalog unavailable — showing reader only.";
       if (!renderedFromCache) document.getElementById("recoWrap").textContent = "Recommendations unavailable.";
     }
   
     // Comments
     loadCommentsOnReport_(id);
-})();
+}
 
   // -------- Comments (global, via Apps Script) --------
   function commentsBase_() {
@@ -866,6 +905,7 @@
     });
   });
 
+  guardRouteAuth_().then((ok) => { if (ok) initReport_(); });
 </script>
 
 </body>

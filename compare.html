@@ -9,6 +9,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="firebase-config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 
   <style>
     body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif; }
@@ -35,6 +38,17 @@
 
     body.embed .pdfFrame {
       height: calc(100vh - 1rem) !important;
+    }
+    /* Temporary UI mask to block Drive pop-out hotspot in embedded preview */
+    .pdf-popout-mask {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.5rem;
+      width: 72px;
+      height: 52px;
+      background: #111827;
+      border-radius: 6px;
+      z-index: 15;
     }
 
 </style>
@@ -63,8 +77,6 @@
         <div class="md:ml-auto flex flex-wrap items-center gap-2">
           <a href="index.html" class="px-3 py-1.5 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50">← Back to catalog</a>
           <button id="swapBtn" class="px-3 py-1.5 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50">Swap</button>
-          <a id="openLeftReport" class="px-3 py-1.5 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50" href="#" target="_blank" rel="noopener">Left report</a>
-          <a id="openRightReport" class="px-3 py-1.5 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50" href="#" target="_blank" rel="noopener">Right report</a>
         </div>
       </div>
     </div>
@@ -84,27 +96,23 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <!-- Left PDF -->
       <section id="leftCol" class="lg:col-span-6">
-        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+        <div class="relative bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
           <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <div class="text-sm font-semibold text-gray-800 truncate" id="leftTitle">Left</div>
-            <div class="flex gap-2">
-              <a id="openLeftView" class="px-2 py-1 text-xs font-semibold bg-amber-600 text-white rounded hover:bg-amber-700" href="#" target="_blank" rel="noopener">View</a>
-            </div>
           </div>
           <iframe id="leftFrame" class="w-full rounded-b-lg pdfFrame" title="Left PDF" loading="lazy"></iframe>
+          <div class="pdf-popout-mask" aria-hidden="true" title="Preview toolbar masked"></div>
         </div>
       </section>
 
       <!-- Right PDF -->
       <section id="rightCol" class="lg:col-span-6">
-        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+        <div class="relative bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
           <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <div class="text-sm font-semibold text-gray-800 truncate" id="rightTitle">Right</div>
-            <div class="flex gap-2">
-              <a id="openRightView" class="px-2 py-1 text-xs font-semibold bg-amber-600 text-white rounded hover:bg-amber-700" href="#" target="_blank" rel="noopener">View</a>
-            </div>
           </div>
           <iframe id="rightFrame" class="w-full rounded-b-lg pdfFrame" title="Right PDF" loading="lazy"></iframe>
+          <div class="pdf-popout-mask" aria-hidden="true" title="Preview toolbar masked"></div>
         </div>
       </section>
 
@@ -131,6 +139,39 @@
   <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-gray-900 text-white text-sm px-4 py-2 rounded shadow-lg"></div>
 
 <script>
+  function firebaseCfg_() {
+    const cfg = (window.DOTDOCK_FIREBASE_CONFIG && typeof window.DOTDOCK_FIREBASE_CONFIG === "object")
+      ? window.DOTDOCK_FIREBASE_CONFIG
+      : {};
+    return cfg;
+  }
+
+  // ===== Auth-specific route guard =====
+  function authEntryUrl_() {
+    return new URL("index.html", location.href);
+  }
+
+  async function guardRouteAuth_() {
+    const cfg = firebaseCfg_();
+    const ready = !!(window.firebase && cfg.apiKey && cfg.projectId && cfg.appId);
+    if (!ready) {
+      document.body.innerHTML = "<div class='p-6 text-red-700'>Sign-in required, but Firebase is not configured.</div>";
+      return false;
+    }
+    if (!firebase.apps.length) firebase.initializeApp(cfg);
+    return await new Promise((resolve) => {
+      firebase.auth().onAuthStateChanged((user) => {
+        if (user) return resolve(true);
+        const next = encodeURIComponent(location.pathname + location.search + location.hash);
+        const entry = authEntryUrl_();
+        entry.searchParams.set("auth", "1");
+        entry.searchParams.set("next", next);
+        location.href = entry.toString();
+        resolve(false);
+      });
+    });
+  }
+
   function qs(name){ return new URLSearchParams(location.search).get(name) || ""; }
 
   // Embed mode: when used inside the catalog overlay, maximize PDF space
@@ -138,8 +179,6 @@
     document.body.classList.add("embed");
   }
   function drivePreviewUrl(fileId){ return `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/preview`; }
-  function viewUrl(fileId){ return `report.html?id=${encodeURIComponent(fileId)}&view=1`; }
-  function reportUrl(fileId){ return `report.html?id=${encodeURIComponent(fileId)}`; }
 
   function showToast(msg){
     const t = document.getElementById("toast");
@@ -154,20 +193,17 @@
     return (x < y) ? [x,y] : [y,x];
   }
 
-  const leftId = qs("left");
-  const rightId = qs("right");
+  async function initCompare_() {
+    const leftId = qs("left");
+    const rightId = qs("right");
 
-  if (!leftId || !rightId) {
-    document.getElementById("missing").classList.remove("hidden");
-  } else {
+    if (!leftId || !rightId) {
+      document.getElementById("missing").classList.remove("hidden");
+      return;
+    } else {
     document.getElementById("leftFrame").src = drivePreviewUrl(leftId);
     document.getElementById("rightFrame").src = drivePreviewUrl(rightId);
 
-    document.getElementById("openLeftView").href = viewUrl(leftId);
-    document.getElementById("openRightView").href = viewUrl(rightId);
-
-    document.getElementById("openLeftReport").href = reportUrl(leftId);
-    document.getElementById("openRightReport").href = reportUrl(rightId);
 
     // Titles show IDs (since compare page doesn't load catalog). You can improve later by passing lt/rt in query params.
     document.getElementById("leftTitle").textContent = "Left: " + leftId;
@@ -220,7 +256,10 @@
 
     tabLeft.addEventListener("click", showLeft);
     tabRight.addEventListener("click", showRight);
+    }
   }
+
+  guardRouteAuth_().then((ok) => { if (ok) initCompare_(); });
 </script>
 </body>
 </html>

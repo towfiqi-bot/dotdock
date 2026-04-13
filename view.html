@@ -8,9 +8,23 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="firebase-config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <style>
     body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif; }
     .brand-title { font-family: 'Playfair Display', serif; letter-spacing: 0.03em; }
+    /* Temporary UI mask to block Drive pop-out hotspot in embedded preview */
+    .pdf-popout-mask {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.5rem;
+      width: 72px;
+      height: 52px;
+      background: #111827;
+      border-radius: 6px;
+      z-index: 15;
+    }
   </style>
 </head>
 <body class="bg-gray-50">
@@ -35,7 +49,6 @@
 
         <div class="md:ml-auto flex flex-wrap gap-2 items-center">
           <a href="index.html" class="px-3 py-1.5 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50">← Back to catalog</a>
-          <a id="openReport" class="px-3 py-1.5 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50" href="#">Report page</a>
           <button id="notebookBtn" class="px-3 py-1.5 text-sm border border-gray-300 rounded bg-white hover:bg-gray-50">NotebookLM</button>
           <button id="copyLink" class="px-3 py-1.5 text-sm bg-amber-600 text-white rounded hover:bg-amber-700">Copy link</button>
         </div>
@@ -44,21 +57,51 @@
   </header>
 
   <main class="max-w-6xl mx-auto px-2 md:px-4 py-3">
-    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm" style="height: calc(100vh - 88px);">
+    <div class="relative bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm" style="height: calc(100vh - 88px);">
       <iframe id="frame" class="w-full h-full" title="PDF viewer" loading="lazy"></iframe>
+      <div class="pdf-popout-mask" aria-hidden="true" title="Preview toolbar masked"></div>
     </div>
   </main>
 
   <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-gray-900 text-white text-sm px-4 py-2 rounded shadow-lg"></div>
 
 <script>
+  function firebaseCfg_() {
+    const cfg = (window.DOTDOCK_FIREBASE_CONFIG && typeof window.DOTDOCK_FIREBASE_CONFIG === "object")
+      ? window.DOTDOCK_FIREBASE_CONFIG
+      : {};
+    return cfg;
+  }
+
+  // ===== Auth-specific route guard =====
+  function authEntryUrl_() {
+    return new URL("index.html", location.href);
+  }
+
+  async function guardRouteAuth_() {
+    const cfg = firebaseCfg_();
+    const ready = !!(window.firebase && cfg.apiKey && cfg.projectId && cfg.appId);
+    if (!ready) {
+      document.body.innerHTML = "<div class='p-6 text-red-700'>Sign-in required, but Firebase is not configured.</div>";
+      return false;
+    }
+    if (!firebase.apps.length) firebase.initializeApp(cfg);
+    return await new Promise((resolve) => {
+      firebase.auth().onAuthStateChanged((user) => {
+        if (user) return resolve(true);
+        const next = encodeURIComponent(location.pathname + location.search + location.hash);
+        const entry = authEntryUrl_();
+        entry.searchParams.set("auth", "1");
+        entry.searchParams.set("next", next);
+        location.href = entry.toString();
+        resolve(false);
+      });
+    });
+  }
+
   function qs(name){ return new URLSearchParams(location.search).get(name) || ""; }
   function drivePreviewUrl(fileId){ return `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/preview`; }
   function driveShareUrl(fileId){ return `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/view?usp=sharing`; }
-  function reportUrl(fileId, title){
-    const base = `report.html?id=${encodeURIComponent(fileId)}`;
-    return title ? `${base}&t=${encodeURIComponent(title)}` : base;
-  }
   function showToast(msg){
     const t = document.getElementById("toast");
     t.textContent = msg;
@@ -67,23 +110,23 @@
     showToast._to = setTimeout(() => t.classList.add("hidden"), 2200);
   }
 
-  const id = qs("id");
-  const titleHint = qs("t");
-  const frame = document.getElementById("frame");
-  const openReport = document.getElementById("openReport");
-  const copyBtn = document.getElementById("copyLink");
-  const notebookBtn = document.getElementById("notebookBtn");
+  async function initView_() {
+    const id = qs("id");
+    const titleHint = qs("t");
+    const frame = document.getElementById("frame");
+    const copyBtn = document.getElementById("copyLink");
+    const notebookBtn = document.getElementById("notebookBtn");
 
-  if (!id) {
-    document.body.innerHTML = "<div class='p-6 text-red-700'>Missing id</div>";
-  } else {
+    if (!id) {
+      document.body.innerHTML = "<div class='p-6 text-red-700'>Missing id</div>";
+      return;
+    }
+
     frame.src = drivePreviewUrl(id);
-    openReport.href = reportUrl(id, titleHint);
 
     if (titleHint) document.title = `dotdock — ${titleHint}`;
-  }
 
-  copyBtn.addEventListener("click", async () => {
+    copyBtn.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(location.href.split("#")[0]);
       copyBtn.textContent = "Copied!";
@@ -93,7 +136,7 @@
     }
   });
 
-  notebookBtn.addEventListener("click", async () => {
+    notebookBtn.addEventListener("click", async () => {
     const link = driveShareUrl(id);
     try {
       await navigator.clipboard.writeText(link);
@@ -104,6 +147,9 @@
       showToast("Open NotebookLM and add this report link as a source.");
     }
   });
+  }
+
+  guardRouteAuth_().then((ok) => { if (ok) initView_(); });
 </script>
 </body>
 </html>
