@@ -1,12 +1,8 @@
 <script type="module">
-  // Import the functions you need from the SDKs you need
+  // Firebase bootstrap (kept as-is)
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
   const firebaseConfig = {
     apiKey: "AIzaSyAzad6VzuTM1dG1-R89mhkvmqewzad4JKI",
     authDomain: "dot-dock.firebaseapp.com",
@@ -17,7 +13,73 @@
     measurementId: "G-J8MTZ2JBZH"
   };
 
-  // Initialize Firebase
   const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
+  getAnalytics(app);
+
+  // CORS-safe JSONP helper for Apps Script GET calls
+  function ddJsonp(url, timeoutMs = 15000) {
+    return new Promise((resolve, reject) => {
+      const cb = "__ddcb_" + Date.now() + "_" + Math.floor(Math.random() * 99999);
+      const sep = url.includes("?") ? "&" : "?";
+      const script = document.createElement("script");
+      let done = false;
+
+      const timer = setTimeout(() => {
+        if (done) return;
+        done = true;
+        cleanup();
+        reject(new Error("JSONP timeout"));
+      }, timeoutMs);
+
+      function cleanup() {
+        clearTimeout(timer);
+        try { delete window[cb]; } catch (_) {}
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      window[cb] = (data) => {
+        if (done) return;
+        done = true;
+        cleanup();
+        resolve(data);
+      };
+
+      script.onerror = () => {
+        if (done) return;
+        done = true;
+        cleanup();
+        reject(new Error("JSONP load error"));
+      };
+
+      script.src = url + sep + "callback=" + encodeURIComponent(cb);
+      document.head.appendChild(script);
+    });
+  }
+
+  // Optional fetch patch for dotdock Apps Script endpoints.
+  // GET requests to dataUrl/askApiUrl will use JSONP automatically.
+  const APP_CONFIG = (window.DOTDOCK_APP_CONFIG && typeof window.DOTDOCK_APP_CONFIG === "object")
+    ? window.DOTDOCK_APP_CONFIG
+    : {};
+
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = async function(input, init) {
+    const reqUrl = typeof input === "string" ? input : (input && input.url ? input.url : "");
+    const method = String((init && init.method) || "GET").toUpperCase();
+    const dataUrl = String(APP_CONFIG.dataUrl || "");
+    const askApiUrl = String(APP_CONFIG.askApiUrl || "");
+
+    const isAppsScriptCall = reqUrl && (reqUrl.startsWith(dataUrl) || reqUrl.startsWith(askApiUrl));
+    if (!isAppsScriptCall || method !== "GET") {
+      return originalFetch(input, init);
+    }
+
+    const data = await ddJsonp(reqUrl);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => data,
+      text: async () => JSON.stringify(data)
+    };
+  };
 </script>

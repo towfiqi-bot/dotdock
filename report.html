@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="app-config.js"></script>
-  <script src="firebase-config.js"></script>
+  <script src="app-config.js?v=20260421"></script>
+  <script src="firebase-config.js?v=20260421"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 
@@ -333,6 +333,31 @@
     : {};
   const DATA_URL = String(APP_CONFIG.dataUrl || "").trim();
 
+  function ddJsonpFetchJson_(url, opts = {}) {
+    const timeoutMs = Number(opts.timeoutMs || 25000) || 25000;
+    return new Promise((resolve, reject) => {
+      const cbName = "__dd_report_cb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+      const sep = url.includes("?") ? "&" : "?";
+      const script = document.createElement("script");
+      let settled = false;
+
+      const done = (err, data) => {
+        if (settled) return;
+        settled = true;
+        try { delete window[cbName]; } catch (_) {}
+        if (script.parentNode) script.parentNode.removeChild(script);
+        clearTimeout(timer);
+        if (err) reject(err); else resolve(data);
+      };
+
+      const timer = setTimeout(() => done(new Error("JSONP timeout")), timeoutMs);
+      window[cbName] = (data) => done(null, data);
+      script.onerror = () => done(new Error("JSONP load failed"));
+      script.src = url + sep + "callback=" + encodeURIComponent(cbName);
+      document.head.appendChild(script);
+    });
+  }
+
   const CACHE_KEY = "pdf_catalog_cache_v2";
   const CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 
@@ -577,11 +602,7 @@
   async function fetchCatalogFresh() {
     if (!DATA_URL) throw new Error("Catalog URL not configured. Set DOTDOCK_APP_CONFIG.dataUrl in app-config.js.");
     const url = DATA_URL + (DATA_URL.includes("?") ? "&" : "?") + "cb=" + Date.now();
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to load catalog (" + res.status + ")");
-    const text = await res.text();
-    let json;
-    try { json = JSON.parse(text); } catch { throw new Error("Catalog returned non-JSON content."); }
+    const json = await ddJsonpFetchJson_(url, { timeoutMs: 25000 });
     if (Array.isArray(json)) return json;
     if (json && Array.isArray(json.items)) return json.items;
     throw new Error("Catalog JSON format unexpected.");
@@ -821,9 +842,7 @@
       "&limit=" + encodeURIComponent(String(limit)) +
       "&offset=" + encodeURIComponent(String(offset)) +
       "&cb=" + Date.now();
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new Error("comments_get failed: " + res.status);
-    const data = await res.json();
+    const data = await ddJsonpFetchJson_(url, { timeoutMs: 15000 });
     if (!data || data.ok !== true) throw new Error(data?.error || "comments_get invalid payload");
     return data;
   }
@@ -835,9 +854,7 @@
       "&name=" + encodeURIComponent(getUserName_(true) || "Anonymous") +
       "&text=" + encodeURIComponent(text || "") +
       "&cb=" + Date.now();
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new Error("comment_add failed: " + res.status);
-    const data = await res.json();
+    const data = await ddJsonpFetchJson_(url, { timeoutMs: 15000 });
     if (!data || data.ok !== true) throw new Error(data?.error || "comment_add invalid payload");
     return data;
   }

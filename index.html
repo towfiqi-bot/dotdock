@@ -59,6 +59,52 @@
       100% { transform: translateX(100%); }
     }
 
+    /* Ask dotdock widget (modal style) */
+    #askDotdockOverlay { background: rgba(15, 23, 42, 0.35); backdrop-filter: blur(2px); }
+    #askDotdockPanel { max-height: min(92vh, 900px); }
+    #askDotdockMessages::-webkit-scrollbar { width: 10px; }
+    #askDotdockMessages::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 999px; }
+    #askDotdockMessages::-webkit-scrollbar-track { background: transparent; }
+    .ask-q-chip { border: 1px solid #d1d5db; border-radius: 12px; padding: 10px 12px; background: #fff; font-size: 14px; text-align: left; }
+    .ask-q-chip:hover { background: #f8fafc; border-color: #93c5fd; }
+    .ask-fab {
+      position: fixed; z-index: 72;
+      right: max(12px, env(safe-area-inset-right));
+      bottom: max(12px, env(safe-area-inset-bottom));
+      border-radius: 16px;
+      padding: 10px 14px;
+      color: #fff;
+      background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 45%, #0ea5e9 100%);
+      box-shadow: 0 12px 26px rgba(29, 78, 216, 0.35);
+      border: 1px solid rgba(255,255,255,0.22);
+      display: flex; align-items: center; gap: 10px;
+      max-width: 220px;
+    }
+    .ask-fab .ask-fab-icon {
+      width: 30px; height: 30px; border-radius: 999px;
+      background: rgba(255,255,255,0.18);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 16px; line-height: 1;
+    }
+    .ask-fab .ask-fab-title { font-size: 24px; font-weight: 700; line-height: 1; }
+    .ask-fab .ask-fab-sub { font-size: 11px; opacity: .9; letter-spacing: .04em; text-transform: uppercase; }
+    #backToTop {
+      right: max(12px, env(safe-area-inset-right));
+      bottom: max(12px, env(safe-area-inset-bottom));
+    }
+    /* Keep back-to-top visible above Ask FAB. */
+    body.has-ask-fab #backToTop {
+      bottom: calc(max(12px, env(safe-area-inset-bottom)) + 96px);
+    }
+    @media (max-width: 768px) {
+      .ask-fab { padding: 8px 12px; border-radius: 14px; right: 10px; bottom: 10px; max-width: 180px; }
+      .ask-fab .ask-fab-title { font-size: 22px; }
+      .ask-fab .ask-fab-sub { display: none; }
+      body.has-ask-fab #backToTop {
+        bottom: calc(max(10px, env(safe-area-inset-bottom)) + 82px);
+      }
+    }
+
 </style>
 </head>
 
@@ -337,10 +383,6 @@
             </button>
             </div>
             <div class="flex items-center gap-2 justify-end sm:justify-start">
-            <button id="aiModeBtn" type="button" aria-pressed="false"
-                    class="shrink-0 px-3 py-2 text-xs font-semibold rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50">
-              AI Mode
-            </button>
             <button id="searchBtn"
                     class="shrink-0 px-5 py-2 text-sm font-semibold uppercase tracking-wide bg-amber-600 text-white rounded-full hover:bg-amber-700">
               Search
@@ -352,7 +394,6 @@
         </div>
           <p class="mt-2 text-xs text-gray-500 text-center">
             Instant search across <span class="font-semibold">title</span> + <span class="font-semibold">summary</span> + <span class="font-semibold">tags</span>; PDF text search runs automatically after a short pause.
-            <span class="block mt-1">AI Mode gives quick, high-level answers—may be slower and not available for every report.</span>
           </p>
         </div>
       </div>
@@ -411,9 +452,62 @@
   </main>
 
   <button id="backToTop"
-          class="hidden fixed bottom-4 right-4 z-40 rounded-full bg-amber-600 text-white shadow-lg p-3 hover:bg-amber-700 transition">
+          class="hidden fixed z-40 rounded-full bg-amber-600 text-white shadow-lg p-3 hover:bg-amber-700 transition">
     ↑
   </button>
+
+  <!-- Ask dotdock -->
+  <button id="askDotdockFab" class="ask-fab" aria-label="Open Ask dotdock">
+    <span class="ask-fab-icon">💬</span>
+    <span>
+      <span class="block ask-fab-title">Ask dotdock</span>
+      <span class="block ask-fab-sub">AI chatbot (beta)</span>
+    </span>
+  </button>
+
+  <section id="askDotdockOverlay" class="hidden fixed inset-0 z-[73] p-4 sm:p-8">
+    <div id="askDotdockPanel"
+           class="mx-auto w-[min(96vw,1180px)] h-[min(92vh,900px)] bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+      <div class="px-5 py-4 border-b border-gray-200 flex items-center gap-3">
+        <div class="font-semibold text-xl text-gray-900">Ask dotdock</div>
+        <div class="text-xs text-gray-500 uppercase tracking-[0.2em]">beta</div>
+        <button id="askDotdockClose" class="ml-auto w-9 h-9 rounded-full border border-gray-300 hover:bg-gray-50">✕</button>
+      </div>
+
+      <div id="askDotdockIntro" class="px-6 py-6 border-b border-gray-100 bg-gray-50/70">
+        <div class="text-lg font-semibold text-gray-900">Ask about your repository insights</div>
+        <p class="mt-2 text-sm text-gray-600">Click a sample question or type your own. Answers are grounded in your indexed PDFs.</p>
+        <div id="askSampleQuestions" class="mt-4 grid md:grid-cols-2 xl:grid-cols-4 gap-3">
+          <button type="button" class="ask-q-chip">How can we start a digital transformation roadmap?</button>
+          <button type="button" class="ask-q-chip">What are top risks in AI adoption for enterprises?</button>
+          <button type="button" class="ask-q-chip">Summarize major trends in cybersecurity governance.</button>
+          <button type="button" class="ask-q-chip">Which reports discuss talent and capability building?</button>
+        </div>
+      </div>
+
+      <div id="askBusyBanner" class="hidden mx-6 mt-4 mb-0 rounded-lg border border-blue-200 bg-blue-50 text-blue-800 text-sm px-3 py-2">
+        <span class="inline-flex items-center gap-2">
+          <span class="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+          <span id="askBusyText">Working on your answer…</span>
+        </span>
+      </div>
+
+      <div id="askDotdockMessages" class="px-6 py-4 space-y-4 flex-1 overflow-auto bg-white">
+        <div class="text-sm text-gray-600">
+          Ask a question. We will use your dotdock repository documents and show references.
+        </div>
+      </div>
+
+      <div class="px-6 py-4 border-t border-gray-200">
+        <div class="flex gap-2">
+          <input id="askDotdockInput" type="text" class="flex-1 border border-gray-300 rounded-lg px-4 py-3 text-sm"
+                 placeholder="Ask about your repository PDFs…" />
+          <button id="askDotdockSend" class="px-4 py-3 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700">Send</button>
+        </div>
+        <div id="askDotdockHint" class="mt-2 text-[11px] text-gray-500"></div>
+      </div>
+    </div>
+  </section>
 
   <!-- Toast -->
   <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] bg-gray-900 text-white text-sm px-4 py-2 rounded shadow-lg"></div>
@@ -434,10 +528,6 @@
           <path d="M18 6L6 18"></path>
           <path d="M6 6l12 12"></path>
         </svg>
-      </button>
-      <button id="stickyAiModeBtn" type="button" aria-pressed="false"
-              class="shrink-0 px-2.5 py-1.5 text-[11px] font-semibold rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50">
-        AI
       </button>
       <button id="stickySearchBtn" type="button"
               class="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-full bg-amber-600 text-white hover:bg-amber-700">
@@ -597,8 +687,8 @@
 
 
   <!-- Optional project-local config (keep these files in your repo/deploy to avoid re-editing index.html) -->
-  <script src="app-config.js"></script>
-  <script src="firebase-config.js"></script>
+  <script src="app-config.js?v=20260421"></script>
+  <script src="firebase-config.js?v=20260421"></script>
   <!-- Firebase (script-tag / compat build for static HTML) -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -609,6 +699,36 @@
     ? window.DOTDOCK_APP_CONFIG
     : {};
   const DATA_URL = String(APP_CONFIG.dataUrl || "").trim();
+
+  function ddJsonpFetchJson_(url, opts = {}) {
+    const timeoutMs = Number(opts.timeoutMs || 25000) || 25000;
+    const signal = opts.signal || null;
+    return new Promise((resolve, reject) => {
+      const cbName = "__dd_cb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+      const sep = url.includes("?") ? "&" : "?";
+      const script = document.createElement("script");
+      let settled = false;
+
+      const done = (err, data) => {
+        if (settled) return;
+        settled = true;
+        try { delete window[cbName]; } catch (_) {}
+        if (script.parentNode) script.parentNode.removeChild(script);
+        clearTimeout(timer);
+        if (signal && abortHandler) signal.removeEventListener("abort", abortHandler);
+        if (err) reject(err); else resolve(data);
+      };
+
+      const timer = setTimeout(() => done(new Error("JSONP timeout")), timeoutMs);
+      const abortHandler = signal ? () => done(new Error("Request aborted")) : null;
+      if (signal) signal.addEventListener("abort", abortHandler, { once: true });
+
+      window[cbName] = (data) => done(null, data);
+      script.onerror = () => done(new Error("JSONP load failed"));
+      script.src = url + sep + "callback=" + encodeURIComponent(cbName);
+      document.head.appendChild(script);
+    });
+  }
 
   // Feature flags (safe toggles)
 
@@ -694,7 +814,6 @@
     searchQuery: "",
     // Progressive In-PDF enrichment (background)
     inPdfMode: false,            // (legacy toggle; UI removed)
-    aiMode: false,
     inPdfIds: null,              // Set<string> of IDs matched inside PDFs for current query
     inPdfQueryKey: "",           // normalized query for inPdfIds
     inPdfSearching: false,       // true when queued or in-flight
@@ -720,6 +839,8 @@
     liveUpdatesTimer: null,
     autoFillGuard: false,
     catalogLoading: true,
+    lastCatalogFetchAt: 0,
+    lastCatalogChangeAt: 0,
     authEnabled: false,
     authUser: null
   };
@@ -857,6 +978,20 @@
     modal.classList.remove("hidden");
     modal.setAttribute("aria-hidden", "false");
     document.body.classList.add("modal-open");
+  }
+
+  function requireAuthForAction_(action, guardedActions = null) {
+    if (action === "auth_open") {
+      openAuthModal_();
+      return false;
+    }
+    const needsAuth = Array.isArray(guardedActions)
+      ? guardedActions.includes(action)
+      : true;
+    if (!needsAuth) return true;
+    if (state.authUser) return true;
+    openAuthModal_();
+    return false;
   }
 
   function closeAuthModal_() {
@@ -1171,10 +1306,7 @@ function commentsCountsCacheSet_(countsObj) {
     const base = DATA_URL + (DATA_URL.includes("?") ? "&" : "?");
     const url = base + "action=likes_get&device=" + encodeURIComponent(getDeviceId_()) + "&cb=" + Date.now();
 
-    const res = await fetch(url, { cache: "no-store", mode: "cors", credentials: "omit" });
-    if (!res.ok) throw new Error("likes_get failed: " + res.status);
-
-    const data = await res.json();
+    const data = await ddJsonpFetchJson_(url, { timeoutMs: 15000 });
     if (!data || data.ok !== true) throw new Error("likes_get returned invalid payload");
 
     REMOTE_LIKES_READY = true;
@@ -1196,10 +1328,7 @@ function commentsCountsCacheSet_(countsObj) {
       "&device=" + encodeURIComponent(getDeviceId_()) +
       "&cb=" + Date.now();
 
-    const res = await fetch(url, { cache: "no-store", mode: "cors", credentials: "omit" });
-    if (!res.ok) throw new Error("like_toggle failed: " + res.status);
-
-    const out = await res.json();
+    const out = await ddJsonpFetchJson_(url, { timeoutMs: 15000 });
     if (!out || out.ok !== true) throw new Error(out?.error || "like_toggle returned invalid payload");
 
     REMOTE_LIKES_READY = true;
@@ -1229,9 +1358,7 @@ function commentsCountsCacheSet_(countsObj) {
   // 2) Always fetch fresh counts (but only once per call)
   const base = DATA_URL + (DATA_URL.includes("?") ? "&" : "?");
   const url = base + "action=comments_counts&cb=" + Date.now();
-  const res = await fetch(url, { cache: "no-store", mode: "cors", credentials: "omit" });
-  if (!res.ok) throw new Error("comments_counts failed: " + res.status);
-  const data = await res.json();
+  const data = await ddJsonpFetchJson_(url, { timeoutMs: 15000 });
   if (!data || data.ok !== true) throw new Error("comments_counts returned invalid payload");
 
   const countsObj = (data.counts && typeof data.counts === "object") ? data.counts : {};
@@ -1248,9 +1375,7 @@ function commentsCountsCacheSet_(countsObj) {
       "&offset=" + encodeURIComponent(String(offset)) +
       "&cb=" + Date.now();
 
-    const res = await fetch(url, { cache: "no-store", mode: "cors", credentials: "omit" });
-    if (!res.ok) throw new Error("comments_get failed: " + res.status);
-    const data = await res.json();
+    const data = await ddJsonpFetchJson_(url, { timeoutMs: 15000 });
     if (!data || data.ok !== true) throw new Error(data?.error || "comments_get returned invalid payload");
     return data;
   }
@@ -1264,9 +1389,7 @@ function commentsCountsCacheSet_(countsObj) {
       "&text=" + encodeURIComponent(text || "") +
       "&cb=" + Date.now();
 
-    const res = await fetch(url, { cache: "no-store", mode: "cors", credentials: "omit" });
-    if (!res.ok) throw new Error("comment_add failed: " + res.status);
-    const data = await res.json();
+    const data = await ddJsonpFetchJson_(url, { timeoutMs: 15000 });
     if (!data || data.ok !== true) throw new Error(data?.error || "comment_add returned invalid payload");
     // update count cache
     const c = Number(data.count || 0) || 0;
@@ -1274,7 +1397,7 @@ function commentsCountsCacheSet_(countsObj) {
     return data;
   }
 
-  // --------- In-PDF Search + AI Mode (A/B) ----------
+  // --------- In-PDF Search ----------
   async function remoteInPdfSearchIds_(q, limit = 60, signal) {
     const base = DATA_URL + (DATA_URL.includes("?") ? "&" : "?");
     const url = base +
@@ -1282,9 +1405,7 @@ function commentsCountsCacheSet_(countsObj) {
       "&limit=" + encodeURIComponent(String(limit)) +
       "&cb=" + Date.now();
 
-    const res = await fetch(url, { cache: "no-store", mode: "cors", credentials: "omit", signal });
-    if (!res.ok) throw new Error("search_pdf failed: " + res.status);
-    const data = await res.json();
+    const data = await ddJsonpFetchJson_(url, { timeoutMs: 25000, signal });
     if (!data || data.ok !== true) throw new Error(data?.error || "search_pdf returned invalid payload");
     return Array.isArray(data.ids) ? data.ids.map(String) : [];
   }
@@ -1353,9 +1474,7 @@ function commentsCountsCacheSet_(countsObj) {
       "&candidates=" + encodeURIComponent((candidateIds || []).map(String).join(",")) +
       "&cb=" + Date.now();
 
-    const res = await fetch(url, { cache: "no-store", mode: "cors", credentials: "omit" });
-    if (!res.ok) throw new Error("ai_search failed: " + res.status);
-    const data = await res.json();
+    const data = await ddJsonpFetchJson_(url, { timeoutMs: 25000 });
     if (!data) throw new Error("ai_search returned empty payload");
     return data;
   }
@@ -1525,12 +1644,14 @@ Output:
   }
 
   // --------- Data loading ----------
-  function withCb_(url) {
+  function withCb_(url, aggressive = false) {
     const sep = url.includes("?") ? "&" : "?";
-    return `${url}${sep}cb=${Date.now()}`;
+    const nonce = Date.now() + "_" + Math.floor(Math.random() * 100000);
+    const extra = aggressive ? `&cache_fix=${encodeURIComponent(nonce)}` : "";
+    return `${url}${sep}cb=${encodeURIComponent(nonce)}${extra}`;
   }
 
-  async function loadData(forceFresh) {
+  async function loadData(forceFresh, aggressive = false) {
     if (!DATA_URL) {
       throw new Error("Catalog URL not configured. Set DOTDOCK_APP_CONFIG.dataUrl in app-config.js.");
     }
@@ -1538,34 +1659,44 @@ Output:
       const cached = cacheGet();
       if (cached) return cached;
     }
-    const url = forceFresh ? withCb_(DATA_URL) : DATA_URL;
-    const ac = new AbortController();
+    const url = forceFresh ? withCb_(DATA_URL, aggressive) : DATA_URL;
     const timeoutMs = forceFresh ? 35000 : 25000;
-    const timer = setTimeout(() => ac.abort(), timeoutMs);
-    let res;
-    try {
-      res = await fetch(url, {
-        cache: forceFresh ? "no-store" : "default",
-        mode: "cors",
-        credentials: "omit",
-        signal: ac.signal
-      });
-    } catch (e) {
-      if (ac.signal.aborted) {
-        const err = new Error("Catalog request timed out.");
-        err.code = "TIMEOUT";
-        throw err;
-      }
-      throw e;
-    } finally {
-      clearTimeout(timer);
-    }
-    if (!res.ok) throw new Error("Failed to load catalog (" + res.status + ")");
-    const text = await res.text();
     let json;
-    try { json = JSON.parse(text); } catch { throw new Error("Catalog returned non-JSON content."); }
+    try {
+      json = await ddJsonpFetchJson_(url, { timeoutMs: timeoutMs });
+    } catch (e) {
+      const err = new Error("Catalog request failed.");
+      err.code = "FETCH_FAIL";
+      throw err;
+    }
     if (!Array.isArray(json)) throw new Error("Catalog JSON format unexpected.");
     return json;
+  }
+
+  function tryCatalogSelfHealOnce_(reason) {
+    const flagKey = "dotdock_catalog_selfheal_once_v1";
+    try {
+      if (sessionStorage.getItem(flagKey) === "1") return false;
+      sessionStorage.setItem(flagKey, "1");
+    } catch (_) {
+      return false;
+    }
+
+    try {
+      localStorage.removeItem(CACHE_KEY);
+      localStorage.removeItem(COMMENTS_COUNTS_CACHE_KEY);
+      localStorage.removeItem(LAST_SEEN_MAX_MOD_KEY);
+    } catch (_) {}
+
+    try {
+      const u = new URL(location.href);
+      u.searchParams.set("cache_fix", String(Date.now()));
+      if (reason) u.searchParams.set("reason", String(reason).slice(0, 40));
+      location.replace(u.toString());
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   // Prepare items for fast search/filter
@@ -2179,20 +2310,10 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
     const likes = likeCount(item.id);
     const likeTitle = ENABLE_REMOTE_LIKES ? "Like" : "Like (saved in your browser)";
     const isNew = !!(state.newIds && state.newIds.has(String(item.id)));
-    const authLocked = !state.authUser;
 
     return `
       <article data-card-id="${escapeHtml(item.id)}" data-new="${isNew ? "1" : "0"}" class="relative overflow-hidden bg-white border ${isNew ? "border-red-200 ring-2 ring-red-100" : "border-gray-200"} rounded-lg p-4 shadow-sm hover:shadow transition">
-        ${authLocked ? `<div class="absolute inset-0 z-20 bg-white/65 backdrop-blur-[2px] flex items-center justify-center p-4">
-          <div class="text-center max-w-xs">
-            <div class="text-sm font-semibold text-gray-800">Please sign in to view full report cards.</div>
-            <button type="button" data-action="auth_open" data-id="${escapeHtml(item.id)}"
-                    class="mt-2 px-3 py-1.5 text-xs font-semibold border border-gray-300 rounded bg-white hover:bg-gray-50">
-              Sign in to continue
-            </button>
-          </div>
-        </div>` : ""}
-        <div class="${authLocked ? "blur-[2px] select-none" : ""}">
+        <div>
         <div class="grid grid-cols-1 sm:grid-cols-[160px,1fr] gap-4">
           <div class="w-full">
             <div class="relative border border-gray-200 bg-white rounded group">
@@ -2850,15 +2971,40 @@ function formatAgo(ts) {
   return `${day}d ago`;
 }
 
+function itemActivityTs_(it) {
+  if (!it || typeof it !== "object") return 0;
+  const a = Number(it.addedAt || 0) || 0;
+  const m = Number(it.modified || 0) || 0;
+  return Math.max(a, m);
+}
+
 function catalogMaxTimestamp_(items) {
   let newest = 0;
   for (const it of (items || [])) {
-    const a = Number((it && it.addedAt) || 0) || 0;
-    const m = Number((it && it.modified) || 0) || 0;
-    const v = Math.max(a, m);
+    const v = itemActivityTs_(it);
     if (v > newest) newest = v;
   }
   return newest;
+}
+
+// Stable content signature used for refresh detection across browsers.
+// Includes id + activity timestamp so a replaced item is detected even when
+// total length stays the same.
+function catalogSignature_(items) {
+  const arr = Array.isArray(items) ? items : [];
+  let newest = 0;
+  let hash = 2166136261; // FNV-1a basis
+  for (const it of arr) {
+    const id = String((it && it.id) || "");
+    const ts = itemActivityTs_(it);
+    if (ts > newest) newest = ts;
+    const token = `${id}:${ts}|`;
+    for (let i = 0; i < token.length; i += 1) {
+      hash ^= token.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+  }
+  return `${arr.length}|${newest}|${hash >>> 0}`;
 }
 
 function setLiveHeaderStatus({ updatedAt, newCount }) {
@@ -2895,7 +3041,7 @@ function computeNewCountSinceLastVisit(items, commit = true) {
   let newCount = 0;
 
   for (const it of (items || [])) {
-    const m = Number(it.addedAt || it.modified || 0) || 0;
+    const m = itemActivityTs_(it);
     if (m > newest) newest = m;
     if (lastSeenMax && m > lastSeenMax) newCount += 1;
   }
@@ -2924,7 +3070,7 @@ function computeNewMarkers_(items) {
   const set = new Set();
   let newest = 0;
   for (const it of (items || [])) {
-    const m = Number(it.addedAt || it.modified || 0) || 0;
+    const m = itemActivityTs_(it);
     if (m > newest) newest = m;
     if (baseline && m > baseline) set.add(String(it.id));
   }
@@ -3004,6 +3150,168 @@ function setupNewPostsBtn_() {
   }
 
 
+
+  // --------- Ask dotdock ----------
+  const ASK_REFS_PAGE_SIZE = 12;
+  const askSessionMap_ = new Map();
+
+  function askTokenize_(s) {
+    return normalizeText(s).split(/\s+/g).filter(Boolean);
+  }
+
+  function askBuildReferencePool_(q, items) {
+    const qTokens = askTokenize_(q);
+    if (!qTokens.length) return [];
+    const qNorm = normalizeText(q);
+
+    const scored = (items || []).map((it) => {
+      const title = normalizeText(it.title || "");
+      const summary = normalizeText(it.summary || "");
+      const cats = normalizeText(Array.isArray(it.categories) ? it.categories.join(" ") : "");
+      const hay = title + " " + summary + " " + cats;
+      let score = 0;
+      for (const tok of qTokens) {
+        if (tok.length < 2) continue;
+        if (title.includes(tok)) score += 6;
+        if (summary.includes(tok)) score += 3;
+        if (cats.includes(tok)) score += 2;
+        if (hay.includes(tok)) score += 1;
+      }
+      if (qNorm && title.includes(qNorm)) score += 15;
+      if (qNorm && summary.includes(qNorm)) score += 10;
+      return { it, score };
+    })
+      .sort((a, b) => b.score - a.score || (Number(b.it.modified || 0) - Number(a.it.modified || 0)));
+
+    let pool = scored.filter(x => x.score > 0).map(({ it }) => ({
+      id: String(it.id || ""),
+      title: String(it.title || "Untitled"),
+      summary: String(it.summary || ""),
+      thumbUrl: String(it.thumbUrl || ""),
+      href: reportPageUrl(it.id, it.title || "")
+    }));
+
+    // If no lexical hits, fallback to newest docs so Ask can still rerank and respond.
+    if (!pool.length) {
+      pool = scored.slice(0, 80).map(({ it }) => ({
+        id: String(it.id || ""),
+        title: String(it.title || "Untitled"),
+        summary: String(it.summary || ""),
+        thumbUrl: String(it.thumbUrl || ""),
+        href: reportPageUrl(it.id, it.title || "")
+      }));
+    }
+    return pool;
+  }
+
+  async function askRerankPoolByAi_(q, pool, limit = ASK_REFS_PAGE_SIZE) {
+    try {
+      const candidateIds = (pool || []).map(x => String(x.id || "")).filter(Boolean).slice(0, 80);
+      if (!candidateIds.length) return (pool || []).slice(0, limit);
+      const out = await remoteAiSearchIds_(q, candidateIds, Math.min(40, Math.max(20, limit * 2)));
+      const ids = Array.isArray(out && out.ids) ? out.ids.map(String) : [];
+      if (!ids.length) return (pool || []).slice(0, limit);
+      const byId = new Map((pool || []).map(x => [String(x.id), x]));
+      const ranked = ids.map(id => byId.get(id)).filter(Boolean);
+      const rest = (pool || []).filter(x => !ids.includes(String(x.id)));
+      return ranked.concat(rest).slice(0, Math.max(limit, ASK_REFS_PAGE_SIZE));
+    } catch (_) {
+      return (pool || []).slice(0, Math.max(limit, ASK_REFS_PAGE_SIZE));
+    }
+  }
+
+  function askFallbackAnswer_(q, refs) {
+    if (!refs.length) {
+      return "I couldn’t find enough matching content in your current repository index. Try a more specific query.";
+    }
+    const lines = refs.map((r, i) => {
+      const s = String(r.summary || "").trim();
+      const brief = s ? (s.length > 180 ? s.slice(0, 180) + "…" : s) : "No summary available yet.";
+      return `${i + 1}. ${r.title}: ${brief}`;
+    });
+    return `Here are the most relevant repository reports for your question (“${q}”):\n\n` + lines.join("\n");
+  }
+
+  async function askDotdockRemote_(q, refs) {
+    const askApiUrl = String(APP_CONFIG.askApiUrl || "").trim();
+    if (!askApiUrl) return null;
+
+    const payload = {
+      q: String(q || ""),
+      references: refs.map(r => ({ id: r.id, title: r.title, summary: r.summary }))
+    };
+    const sep = askApiUrl.includes("?") ? "&" : "?";
+    const url = askApiUrl + sep +
+      "action=ask_dotdock" +
+      "&q=" + encodeURIComponent(payload.q) +
+      "&references=" + encodeURIComponent(JSON.stringify(payload.references));
+    return await ddJsonpFetchJson_(url, { timeoutMs: 30000 });
+  }
+
+  function askScrollToBottom_(smooth = true) {
+    const wrap = document.getElementById("askDotdockMessages");
+    if (!wrap) return;
+    wrap.scrollTo({ top: wrap.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+  }
+
+  function askRenderThinking_(q, refs, searchedCount) {
+    const wrap = document.getElementById("askDotdockMessages");
+    if (!wrap) return "";
+    const pendingId = "askPending_" + Date.now();
+
+    const userHtml = `
+      <div class="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-900">
+        <div class="font-semibold mb-1">You</div>
+        <div>${escapeHtml(q)}</div>
+      </div>
+    `;
+
+    const botHtml = `
+      <div id="${pendingId}" class="bg-white border border-gray-200 rounded p-3 text-sm text-gray-800">
+        <div class="font-semibold mb-1">Ask dotdock</div>
+        <div class="flex items-center gap-2 text-gray-600">
+          <span class="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+          <span>Generating response…</span>
+        </div>
+        <div class="mt-2 text-xs text-gray-500">Scanned ${Number(searchedCount || 0)} repository reports. Preparing best references.</div>
+      </div>
+    `;
+
+    wrap.insertAdjacentHTML("beforeend", userHtml + botHtml);
+    askScrollToBottom_(true);
+    return pendingId;
+  }
+
+  function askRenderResponse_(pendingId, answer, refs, searchedCount, totalMatches) {
+    const pending = document.getElementById(pendingId);
+    if (!pending) return;
+
+    const refsHtml = refs.map((r) => `
+      <a href="${escapeHtml(r.href)}" class="block border border-gray-200 rounded p-2 bg-white hover:bg-gray-50">
+        <div class="flex gap-2">
+          <img src="${escapeHtml(r.thumbUrl || "https://via.placeholder.com/80x112?text=PDF")}" class="w-10 h-14 object-cover rounded border border-gray-200 bg-gray-100" alt="thumb">
+          <div class="min-w-0"><div class="text-sm font-semibold text-gray-800 line-clamp-2">${escapeHtml(r.title)}</div></div>
+        </div>
+      </a>
+    `).join("");
+
+    const botHtml = `
+      <div class="font-semibold mb-1">Ask dotdock</div>
+      <div class="text-xs text-gray-500 mb-2">Scanned ${Number(searchedCount || 0)} reports • showing ${refs.length} of ${Number(totalMatches || refs.length)} matched references</div>
+      <div class="whitespace-pre-wrap leading-relaxed">${escapeHtml(answer)}</div>
+      <div class="mt-3">
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">References</div>
+        <div class="space-y-2">${refsHtml || "<div class='text-xs text-gray-500'>No references found.</div>"}</div>
+        ${Number(totalMatches || 0) > refs.length ? `
+          <button type="button" data-ask-more-id="${escapeHtml(pendingId)}" class="mt-2 text-sm font-semibold text-blue-700 hover:underline">More references…</button>
+        ` : ""}
+      </div>
+    `;
+
+    pending.innerHTML = botHtml;
+    askScrollToBottom_(true);
+  }
+  
   // --------- DOM events ----------
   document.addEventListener("DOMContentLoaded", async () => {
     // ===== Firebase start =====
@@ -3174,6 +3482,18 @@ function setupNewPostsBtn_() {
     const stickyInput = document.getElementById("stickySearchInput");
     const stickyBtn = document.getElementById("stickySearchBtn");
     const stickyClearBtn = document.getElementById("stickySearchClearBtn");
+    const askFab = document.getElementById("askDotdockFab");
+    const askOverlay = document.getElementById("askDotdockOverlay");
+    const askPanel = document.getElementById("askDotdockPanel");
+    const askClose = document.getElementById("askDotdockClose");
+    const askSend = document.getElementById("askDotdockSend");
+    const askInput = document.getElementById("askDotdockInput");
+    const askHint = document.getElementById("askDotdockHint");
+    const askMessages = document.getElementById("askDotdockMessages");
+    const askBusyBanner = document.getElementById("askBusyBanner");
+    const askBusyText = document.getElementById("askBusyText");
+    const askIntro = document.getElementById("askDotdockIntro");
+    const askSampleQuestions = document.getElementById("askSampleQuestions");
 
     // Sidebar toggle (desktop)
     const sidebar = document.getElementById("sidebar");
@@ -3446,18 +3766,20 @@ setInterval(() => {
   if (ts) setLiveHeaderStatus({ updatedAt: ts, newCount: nc }); // preserve "ago" + "new"
 }, 30000);
     
-const AUTO_REFRESH_MS = 60 * 1000;
+const AUTO_REFRESH_MS = 20 * 1000;
 let _refreshInFlight = false;
 async function refreshCatalogInBackground_(notify = true) {
   if (_refreshInFlight) return;
   _refreshInFlight = true;
   try {
-    const data = prepareItems(await loadData(true));
-    // quick change detection: length + newest modified
-    const sig = (arr) => `${arr.length}|${Math.max(...arr.map(x => x.modified || 0))}`;
-
-    if (sig(data) !== sig(state.allItems || [])) {
+    const staleForMs = state.lastCatalogFetchAt ? (Date.now() - state.lastCatalogFetchAt) : Number.POSITIVE_INFINITY;
+    const aggressive = staleForMs >= (2 * 60 * 1000);
+    const data = prepareItems(await loadData(true, aggressive));
+    state.lastCatalogFetchAt = Date.now();
+    // robust change detection: length + content hash + activity timestamp
+    if (catalogSignature_(data) !== catalogSignature_(state.allItems || [])) {
       state.allItems = data;
+      state.lastCatalogChangeAt = Date.now();
       cacheSet(data);
       const { newCount } = computeNewMarkers_(data);
       setLiveHeaderStatus({ updatedAt: catalogMaxTimestamp_(data), newCount });
@@ -3479,6 +3801,7 @@ setInterval(() => { refreshCatalogInBackground_(true); }, AUTO_REFRESH_MS);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") refreshCatalogInBackground_(false);
 });
+window.addEventListener("online", () => { refreshCatalogInBackground_(false); });
 
     const catSection = document.getElementById("categoryFilterSection");
     if (!ENABLE_CATEGORY_FILTER && catSection) {
@@ -3661,54 +3984,6 @@ document.addEventListener("visibilitychange", () => {
         clearInPdfState_();
       }
 
-      // AI Mode: run AI rerank on demand (Search/Enter)
-      if (state.aiMode) {
-        try {
-          showToast("AI Mode: searching…");
-
-          // Candidate set from local strong search (title+summary+tags)
-          const parsed = parseQuery(q);
-          const scored = state.allItems
-            .map(it => ({ it, s: matchQuery(it, parsed) ? scoreQuery(it, parsed) : -9999 }))
-            .filter(x => x.s > -9999)
-            .sort((a,b) => b.s - a.s)
-            .slice(0, 50);
-
-          let candidates = scored.map(x => String(x.it.id));
-
-          // If we already have in-PDF hits for this query, expand candidates (best-effort)
-          const key = normalizeQueryKey_(q);
-          if (state.inPdfIds instanceof Set && state.inPdfQueryKey === key) {
-            const set = new Set(candidates);
-            for (const id of state.inPdfIds) {
-              if (!set.has(id)) { candidates.push(id); set.add(id); }
-            }
-          }
-
-          const out = await remoteAiSearchIds_(q, candidates, 30);
-
-          if (out.ok === true && Array.isArray(out.ids)) {
-            setOverrideResults_(out.ids, "AI Mode");
-            applyFilters();
-            return;
-          }
-
-          if (out && out.quota) {
-            showToast(out.message || "AI Mode daily limit reached.");
-          } else {
-            showToast(out.message || "AI Mode unavailable. Showing normal results.");
-          }
-          clearOverrideResults_();
-          applyFilters();
-          return;
-        } catch (e) {
-          showToast("AI Mode error. Showing normal results.");
-          clearOverrideResults_();
-          applyFilters();
-          return;
-        }
-      }
-
       // Normal mode: local results are already filtered live; just ensure UI is updated.
       clearOverrideResults_();
       applyFilters();
@@ -3723,7 +3998,7 @@ document.addEventListener("visibilitychange", () => {
       // Always show local results instantly while typing (normalized for natural language queries)
       state.searchQuery = normalizeUserQueryForSearch_(searchInput.value.trim());
 
-      // While typing, show normal results (clear any AI override)
+      // While typing, show normal results (clear any override)
       if (state.overrideLabel) clearOverrideResults_();
 
       // New query -> clear old in-PDF hits
@@ -3797,11 +4072,9 @@ document.addEventListener("visibilitychange", () => {
     syncSearchClearBtn();
 
 
-    // A/B search mode toggles
+    // Search mode toggle
     const inPdfBtn = document.getElementById("inPdfBtn");
-    const aiModeBtn = document.getElementById("aiModeBtn");
     const stickyInPdfBtn = document.getElementById("stickyInPdfBtn");
-    const stickyAiModeBtn = document.getElementById("stickyAiModeBtn");
 
     function styleToggle_(btn, on) {
       if (!btn) return;
@@ -3816,29 +4089,16 @@ document.addEventListener("visibilitychange", () => {
     function syncModeUi_() {
       styleToggle_(inPdfBtn, state.inPdfMode);
       styleToggle_(stickyInPdfBtn, state.inPdfMode);
-      styleToggle_(aiModeBtn, state.aiMode);
-      styleToggle_(stickyAiModeBtn, state.aiMode);
     }
 
     function setInPdfMode_(on) {
       state.inPdfMode = !!on;
       if (!state.inPdfMode) {
-        // Only clear override if we were showing In-PDF results (AI has its own label)
+        // Only clear override if we were showing In-PDF results
         if (state.overrideLabel === "In-PDF") clearOverrideResults_();
       }
       syncModeUi_();
     }
-    function setAiMode_(on) {
-      state.aiMode = !!on;
-      if (!state.aiMode) {
-        if (state.overrideLabel === "AI Mode") clearOverrideResults_();
-      }
-      syncModeUi_();
-    }
-
-    if (aiModeBtn) aiModeBtn.addEventListener("click", () => { setAiMode_(!state.aiMode); });
-    if (stickyAiModeBtn) stickyAiModeBtn.addEventListener("click", () => { setAiMode_(!state.aiMode); });
-
     syncModeUi_();
 
     clearBtn.addEventListener("click", () => {
@@ -4108,16 +4368,7 @@ document.addEventListener("visibilitychange", () => {
       const action = btn.getAttribute("data-action");
       const id = btn.getAttribute("data-id");
       if (!id) return;
-      const authLocked = !state.authUser;
-
-      if (action === "auth_open") {
-        openAuthModal_();
-        return;
-      }
-      if (authLocked) {
-        openAuthModal_();
-        return;
-      }
+      if (!requireAuthForAction_(action)) return;
 
       const item = state.allItems.find(x => String(x.id) === String(id));
 
@@ -4209,6 +4460,7 @@ document.addEventListener("visibilitychange", () => {
       const action = btn.getAttribute("data-action");
       const id = btn.getAttribute("data-id");
       if (!id) return;
+      if (!requireAuthForAction_(action, ["modal", "compare"])) return;
       if (action === "modal") openPdfModalById(id);
       if (action === "reading") toggleReadingItem(id);
       if (action === "compare") toggleCompare(id);
@@ -4219,7 +4471,9 @@ document.addEventListener("visibilitychange", () => {
       const btn = e.target.closest("[data-action='compare']");
       if (!btn) return;
       const id = btn.getAttribute("data-id");
-      if (id) toggleCompare(id);
+      if (!id) return;
+      if (!requireAuthForAction_("compare", ["compare"])) return;
+      toggleCompare(id);
     });
 
     // Instant-load cached data on Home to improve first paint.
@@ -4273,6 +4527,8 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
       const data = prepareItems(await loadData(false));
       state.allItems = data;
       state.catalogLoading = false;
+      state.lastCatalogFetchAt = Date.now();
+      state.lastCatalogChangeAt = Date.now();
       cacheSet(data);
       buildFacetFilters();
       refreshSearchSuggestData();
@@ -4300,6 +4556,8 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
             const retry = prepareItems(await loadData(true));
             state.allItems = retry;
             state.catalogLoading = false;
+            state.lastCatalogFetchAt = Date.now();
+            state.lastCatalogChangeAt = Date.now();
             cacheSet(retry);
             buildFacetFilters();
             refreshSearchSuggestData();
@@ -4315,6 +4573,11 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
           }
         } else {
           state.catalogLoading = false;
+          const healed = tryCatalogSelfHealOnce_("catalog_fail");
+          if (healed) {
+            infoEl.textContent = "Refreshing cached assets…";
+            return;
+          }
           infoEl.textContent = "Error loading data: " + e.message;
         }
       }
@@ -4324,10 +4587,11 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
     setTimeout(async () => {
       try {
         const fresh = prepareItems(await loadData(true));
-        const sig = (arr) => `${arr.length}|${Math.max(...arr.map(x => x.modified || 0))}`;
-        if (sig(fresh) === sig(state.allItems || [])) return;
+        if (catalogSignature_(fresh) === catalogSignature_(state.allItems || [])) return;
 
         state.allItems = fresh;
+        state.lastCatalogFetchAt = Date.now();
+        state.lastCatalogChangeAt = Date.now();
         cacheSet(fresh);
         buildFacetFilters();
         refreshSearchSuggestData();
@@ -4351,8 +4615,123 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
         closeSummaryModal();
         helpDd.classList.add("hidden");
         closeCompareModalAndClear();
+        if (askOverlay) askOverlay.classList.add("hidden");
       }
     });
+
+
+    // Ask dotdock interactions
+    document.body.classList.toggle("has-ask-fab", !!askFab);
+    if (askFab && askOverlay) {
+      askFab.addEventListener("click", () => {
+        if (state.authEnabled && !state.authUser) {
+          openAuthModal_();
+          return;
+        }
+        askOverlay.classList.remove("hidden");
+        if (askInput) askInput.focus();
+      });
+    }
+    if (askClose && askOverlay) {
+      askClose.addEventListener("click", () => askOverlay.classList.add("hidden"));
+    }
+    if (askOverlay && askPanel) {
+      askOverlay.addEventListener("click", (ev) => {
+        if (ev.target === askOverlay) askOverlay.classList.add("hidden");
+      });
+    }
+
+    async function askSubmit_() {
+      const q = String(askInput?.value || "").trim();
+      if (!q) return;
+      if (state.authEnabled && !state.authUser) {
+        if (askHint) askHint.textContent = "Please sign in to use Ask dotdock.";
+        openAuthModal_();
+        return;
+      }
+      const prevSendLabel = askSend ? askSend.textContent : "";
+      if (askSend) {
+        askSend.disabled = true;
+        askSend.textContent = "Thinking…";
+      }
+      if (askHint) askHint.textContent = "Searching repository…";
+      if (askBusyBanner) askBusyBanner.classList.remove("hidden");
+      if (askBusyText) askBusyText.textContent = "Searching repository and ranking references…";
+      if (askIntro) askIntro.classList.add("hidden");
+      try {
+        const totalScanned = Array.isArray(state.allItems) ? state.allItems.length : 0;
+        const lexicalPool = askBuildReferencePool_(q, state.allItems || []);
+        const aiTop = await askRerankPoolByAi_(q, lexicalPool, ASK_REFS_PAGE_SIZE);
+        const aiTopIds = new Set(aiTop.map(x => String(x.id)));
+        const pool = aiTop.concat(lexicalPool.filter(x => !aiTopIds.has(String(x.id))));
+        const refs = pool.slice(0, ASK_REFS_PAGE_SIZE);
+        const pendingId = askRenderThinking_(q, refs, totalScanned);
+        let answer = "";
+        try {
+          const remote = await askDotdockRemote_(q, refs);
+          answer = (remote && remote.ok && remote.answer)
+            ? String(remote.answer)
+            : askFallbackAnswer_(q, refs);
+        } catch {
+          answer = askFallbackAnswer_(q, refs);
+        }
+        askSessionMap_.set(pendingId, {
+          answer: answer,
+          searchedCount: totalScanned,
+          pool: pool,
+          shown: refs.length
+        });
+        askRenderResponse_(pendingId, answer, refs, totalScanned, pool.length);
+        if (askBusyText) askBusyText.textContent = "Answer ready.";
+        if (askInput) askInput.value = "";
+        if (askHint) {
+          const askApiUrl = String(APP_CONFIG.askApiUrl || "").trim();
+          askHint.textContent = askApiUrl
+            ? ("Answer generated. Searched " + totalScanned + " reports; showing " + refs.length + " of " + pool.length + " matched references.")
+            : "Ask backend not configured yet. Showing repository-grounded fallback answer.";
+        }
+      } finally {
+        if (askSend) {
+          askSend.disabled = false;
+          askSend.textContent = prevSendLabel || "Send";
+        }
+        if (askBusyBanner) {
+          setTimeout(() => askBusyBanner.classList.add("hidden"), 900);
+        }
+      }
+    }
+
+    if (askSampleQuestions && askInput) {
+      askSampleQuestions.addEventListener("click", (ev) => {
+        const btn = ev.target.closest(".ask-q-chip");
+        if (!btn) return;
+        askInput.value = String(btn.textContent || "").trim();
+        askSubmit_();
+      });
+    }
+    if (askMessages) {
+      askMessages.addEventListener("click", (ev) => {
+        const btn = ev.target.closest("[data-ask-more-id]");
+        if (!btn) return;
+        const id = String(btn.getAttribute("data-ask-more-id") || "");
+        const session = askSessionMap_.get(id);
+        if (!session) return;
+        session.shown = Math.min(session.pool.length, session.shown + ASK_REFS_PAGE_SIZE);
+        const refs = session.pool.slice(0, session.shown);
+        askSessionMap_.set(id, session);
+        askRenderResponse_(id, session.answer, refs, session.searchedCount, session.pool.length);
+      });
+    }
+
+    if (askSend) askSend.addEventListener("click", askSubmit_);
+    if (askInput) {
+      askInput.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          askSubmit_();
+        }
+      });
+    }
 
     setupNewPostsBtn_();
     setupInfiniteScroll();
