@@ -14,6 +14,28 @@
   <style>
     body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif; }
     .brand-title { font-family: 'Playfair Display', serif; letter-spacing: 0.03em; }
+    .site-logo-link { display: inline-flex; align-items: center; justify-content: flex-start; flex-shrink: 0; }
+    .site-logo-frame {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 68px;
+      max-width: min(62vw, 520px);
+      padding: 4px 10px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      border: 1px solid #e5e7eb;
+    }
+    .site-logo-img {
+      display: block;
+      max-height: 100%;
+      width: auto;
+      max-width: 100%;
+      object-fit: contain;
+    }
+    @media (min-width: 768px) {
+      .site-logo-frame { height: 88px; padding: 6px 12px; }
+    }
     /* Temporary UI mask to block Drive pop-out hotspot in embedded preview */
     .pdf-popout-mask {
       position: absolute;
@@ -32,19 +54,12 @@
     <div class="max-w-6xl mx-auto px-4 py-3">
       <div class="flex flex-col md:flex-row md:items-center gap-3">
         <div class="flex items-center gap-4">
-          <a href="index.html" class="block" aria-label="Back to catalog">
-            <img src="logo.png" alt="dotdock logo"
-                 class="h-10 w-10 md:h-12 md:w-12 rounded-full object-cover shadow-md border border-gray-200 bg-white">
+          <a href="index.html" class="site-logo-link" aria-label="Back to catalog">
+            <span class="site-logo-frame">
+              <img src="logo.png" alt="dotdock logo" class="site-logo-img">
+            </span>
           </a>
-          <div>
-            <div class="flex items-baseline gap-3">
-              <div class="text-xl font-semibold text-gray-900 tracking-tight">dotdock</div>
-              <span class="text-xs text-gray-500 font-semibold uppercase tracking-[0.14em]">Viewer</span>
-            </div>
-            <p class="mt-1 text-amber-600 text-[10px] md:text-xs font-semibold uppercase tracking-[0.14em] not-italic">
-              Where report insights come together.
-            </p>
-          </div>
+          <span class="text-xs text-gray-500 font-semibold uppercase tracking-[0.14em]">Viewer</span>
         </div>
 
         <div class="md:ml-auto flex flex-wrap gap-2 items-center">
