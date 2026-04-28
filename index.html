@@ -82,6 +82,26 @@
       -webkit-user-select: none;
       -webkit-touch-callout: none;
     }
+    .dd-new-card {
+      animation: dd-new-card-glow 2.2s ease-in-out infinite;
+    }
+    .dd-new-badge {
+      animation: dd-new-badge-pop 1.8s ease-in-out infinite;
+    }
+    @keyframes dd-new-card-glow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.08), 0 2px 8px rgba(15, 23, 42, 0.08); }
+      50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.12), 0 8px 24px rgba(239, 68, 68, 0.16); }
+    }
+    @keyframes dd-new-badge-pop {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .dd-new-card,
+      .dd-new-badge {
+        animation: none !important;
+      }
+    }
     @keyframes dd-shimmer {
       100% { transform: translateX(100%); }
     }
@@ -2335,7 +2355,7 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
     const isNew = !!(state.newIds && state.newIds.has(String(item.id)));
 
     return `
-      <article data-card-id="${escapeHtml(item.id)}" data-new="${isNew ? "1" : "0"}" class="relative overflow-hidden bg-white border ${isNew ? "border-red-200 ring-2 ring-red-100" : "border-gray-200"} rounded-lg p-4 shadow-sm hover:shadow transition">
+      <article data-card-id="${escapeHtml(item.id)}" data-new="${isNew ? "1" : "0"}" class="relative overflow-hidden bg-white border ${isNew ? "border-red-200 ring-2 ring-red-100 dd-new-card" : "border-gray-200"} rounded-lg p-4 shadow-sm hover:shadow transition">
         <div>
         <div class="grid grid-cols-1 sm:grid-cols-[160px,1fr] gap-4">
           <div class="w-full">
@@ -2356,7 +2376,7 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
               <span>${escapeHtml(statusLabel)}</span>
               ${addedTs ? `<span class="text-gray-300">•</span><span>${escapeHtml(addedLabel)}</span>` : ``}
               ${updatedTs ? `<span class="text-gray-300">•</span><span>${escapeHtml(updatedLabel)}</span>` : ``}
-              ${isNew ? `<span class="ml-2 px-2 py-0.5 rounded-full border border-red-200 bg-red-50 text-red-700 text-[10px] font-bold tracking-wide">NEW</span>` : ``}
+              ${isNew ? `<span class="dd-new-badge ml-2 px-2 py-0.5 rounded-full border border-red-200 bg-red-50 text-red-700 text-[10px] font-bold tracking-wide">NEW</span>` : ``}
             </div>
 
             <a href="${reportPageUrl(item.id, item.title || "") }"
