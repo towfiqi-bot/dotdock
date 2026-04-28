@@ -77,6 +77,11 @@
       background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
       animation: dd-shimmer 1.2s infinite;
     }
+    .dd-no-select {
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
     @keyframes dd-shimmer {
       100% { transform: translateX(100%); }
     }
@@ -2345,7 +2350,7 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
           </div>
 
           <div class="flex flex-col">
-            <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+            <div class="dd-no-select flex flex-wrap items-center gap-2 text-xs text-gray-500">
               <span>${year}</span>
               <span class="text-gray-300">•</span>
               <span>${escapeHtml(statusLabel)}</span>
@@ -2355,11 +2360,11 @@ const matchesTopic = state.selectedTopics.size === 0 || (() => {
             </div>
 
             <a href="${reportPageUrl(item.id, item.title || "") }"
-               class="mt-1 text-base md:text-lg font-semibold text-amber-700 hover:underline">
+               class="dd-no-select mt-1 text-base md:text-lg font-semibold text-amber-700 hover:underline">
               ${title}
             </a>
 
-            <div class="mt-3 flex flex-wrap gap-2 text-xs text-gray-500">${cats}</div>
+            <div class="dd-no-select mt-3 flex flex-wrap gap-2 text-xs text-gray-500">${cats}</div>
 
             <div class="mt-4 flex flex-wrap gap-2">
               <button data-action="reading" data-id="${escapeHtml(item.id)}"
@@ -4380,7 +4385,17 @@ window.addEventListener("online", () => { refreshCatalogInBackground_(false); })
 
 
     // Event delegation for card actions + reading list preview buttons
-    document.getElementById("cardsContainer").addEventListener("click", async (e) => {
+    const cardsContainer = document.getElementById("cardsContainer");
+
+    cardsContainer.addEventListener("copy", (e) => {
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+      if (!target.closest(".dd-no-select")) return;
+      if (target.closest("input, textarea, [contenteditable='true']")) return;
+      e.preventDefault();
+    });
+
+    cardsContainer.addEventListener("click", async (e) => {
       const btn = e.target.closest("[data-action]");
       if (!btn) return;
       const action = btn.getAttribute("data-action");
@@ -4494,55 +4509,16 @@ window.addEventListener("online", () => { refreshCatalogInBackground_(false); })
       toggleCompare(id);
     });
 
-    // Instant-load cached data on Home to improve first paint.
-    // For Added Today, keep fresh-first behavior to avoid "0 added today" stale flashes.
-    const preferFreshFirst = state.tab === "today";
-    const cachedMeta = cacheGetMeta_();
-    const cacheAgeMs = (cachedMeta && typeof cachedMeta.time === "number")
-      ? (Date.now() - cachedMeta.time)
-      : Number.POSITIVE_INFINITY;
-    const allowCachedFirst = !preferFreshFirst && cacheAgeMs <= CACHE_TTL_MS;
-    const cached = allowCachedFirst ? cacheGet() : null;
-    if (cached) {
-      state.allItems = prepareItems(cached);
-      state.catalogLoading = false;
-      buildFacetFilters();
-      refreshSearchSuggestData();
+    // Always show loading skeleton first; do not render cached cards before fresh fetch.
+    const cachedFallback = cacheGet();
+    state.catalogLoading = true;
+    setLiveHeaderStatus({ updatedAt: 0, newCount: 0 });
+    renderCardSkeletons(state.pageSize);
+    document.getElementById("resultsInfo").textContent = "Loading latest reports…";
 
-      // Header pills: show cache time + "new" count without advancing baseline yet
-      const peekNew = (computeNewMarkers_(state.allItems).newCount || 0);
-      setLiveHeaderStatus({ updatedAt: catalogMaxTimestamp_(state.allItems), newCount: peekNew });
-
-      if (ENABLE_REMOTE_LIKES) {
-  remoteLikesPrime_().then(() => {
-    if (state.sortMode === "liked") applyFilters(true);
-    else render();
-  }).catch(() => {});
-}
-// Prime comment counts (cached instantly, then fresh)
-remoteCommentsPrime_({ useCache: true }).catch(() => {});
-
-      applyFilters();
-      renderReadingList();
-      renderCompare();
-      document.getElementById("resultsInfo").textContent =
-        cacheAgeMs <= CACHE_PREFER_MS
-          ? "Loaded from cache. Syncing latest…"
-          : "Showing cached snapshot while syncing latest…";
-    } else {
-      // Keep header pill visible while first load runs
-      state.catalogLoading = true;
-      setLiveHeaderStatus({ updatedAt: 0, newCount: 0 });
-      renderCardSkeletons(state.pageSize);
-      document.getElementById("resultsInfo").textContent = "Loading publications…";
-      if (preferFreshFirst) {
-        document.getElementById("resultsInfo").textContent = "Loading latest reports…";
-      }
-    }
-
-    // Fetch network data (cache-friendly first request)
+    // Fetch fresh network data first so users never see stale cards on entry.
     try {
-      const data = prepareItems(await loadData(false));
+      const data = prepareItems(await loadData(true, true));
       state.allItems = data;
       state.catalogLoading = false;
       state.lastCatalogFetchAt = Date.now();
@@ -4566,29 +4542,49 @@ remoteCommentsPrime_({ useCache: true }).catch(() => {});
       renderCompare();
       refreshStatus.textContent = "Last updated: " + formatTime(Date.now());
     } catch (e) {
-      if (!cached) {
-        const infoEl = document.getElementById("resultsInfo");
-        if (e && e.code === "TIMEOUT") {
-          infoEl.textContent = "Server is slow. Retrying…";
-          try {
-            const retry = prepareItems(await loadData(true));
-            state.allItems = retry;
+      const infoEl = document.getElementById("resultsInfo");
+      if (e && e.code === "TIMEOUT") {
+        infoEl.textContent = "Server is slow. Retrying…";
+        try {
+          const retry = prepareItems(await loadData(true, true));
+          state.allItems = retry;
+          state.catalogLoading = false;
+          state.lastCatalogFetchAt = Date.now();
+          state.lastCatalogChangeAt = Date.now();
+          cacheSet(retry);
+          buildFacetFilters();
+          refreshSearchSuggestData();
+          const { newCount } = computeNewMarkers_(retry);
+          setLiveHeaderStatus({ updatedAt: catalogMaxTimestamp_(retry), newCount });
+          commitSeenMaxOnce_(retry);
+          applyFilters();
+          renderReadingList();
+          renderCompare();
+          refreshStatus.textContent = "Last updated: " + formatTime(Date.now());
+        } catch (retryErr) {
+          if (cachedFallback) {
+            state.allItems = prepareItems(cachedFallback);
             state.catalogLoading = false;
-            state.lastCatalogFetchAt = Date.now();
-            state.lastCatalogChangeAt = Date.now();
-            cacheSet(retry);
             buildFacetFilters();
             refreshSearchSuggestData();
-            const { newCount } = computeNewMarkers_(retry);
-            setLiveHeaderStatus({ updatedAt: catalogMaxTimestamp_(retry), newCount });
-            commitSeenMaxOnce_(retry);
             applyFilters();
             renderReadingList();
             renderCompare();
-            refreshStatus.textContent = "Last updated: " + formatTime(Date.now());
-          } catch (retryErr) {
+            infoEl.textContent = "Latest fetch failed. Showing saved snapshot.";
+          } else {
             infoEl.textContent = "Still loading from server… please wait.";
           }
+        }
+      } else {
+        if (cachedFallback) {
+          state.allItems = prepareItems(cachedFallback);
+          state.catalogLoading = false;
+          buildFacetFilters();
+          refreshSearchSuggestData();
+          applyFilters();
+          renderReadingList();
+          renderCompare();
+          infoEl.textContent = "Latest fetch failed. Showing saved snapshot.";
         } else {
           state.catalogLoading = false;
           const healed = tryCatalogSelfHealOnce_("catalog_fail");
